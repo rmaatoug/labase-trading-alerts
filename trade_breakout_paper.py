@@ -40,7 +40,7 @@ logger.info(f"IB_CONNECT host={IB_HOST} port={IB_PORT} clientId={CLIENT_ID}")
 
 # --- IBKR event handlers ---
 def on_ib_error(reqId, errorCode, errorString, contract):
-    inc(metrics, 'api_errors')
+    inc('api_errors')
     sym = getattr(contract, 'symbol', None) if contract else None
     logger.error(f'IB_ERROR reqId={reqId} code={errorCode} symbol={sym} msg={errorString}')
     
@@ -86,6 +86,7 @@ def attach_trade_metrics(trade, tag: str):
         trade.statusEvent += _on_status
     except Exception as e:
         logger.error(f'Could not attach statusEvent: {e}')
+        inc('event_attachment_errors')
 # --- end order status tracking ---
 
 # --- logging helper ---
@@ -166,6 +167,8 @@ def process_ticker(SYMBOL):
             qty_value = math.floor(MAX_POSITION_EUR / price_eur) if price_eur > 0 else 0
 
             qty = min(qty_risk, qty_value)
+            # Cap at IBKR order limit (500)
+            qty = min(qty, 500)
 
         now = datetime.now(timezone.utc).isoformat()
 
@@ -218,7 +221,7 @@ def process_ticker(SYMBOL):
             buy = MarketOrder("BUY", qty)
             trade_buy = ib.placeOrder(contract, buy)
             
-            inc(metrics, 'orders_sent')
+            inc('orders_sent')
             logger.info(f'ORDER_SENT tag=BUY symbol={contract.symbol} qty={qty}')
             attach_trade_metrics(trade_buy, 'BUY')
             ib.sleep(1)
@@ -240,7 +243,7 @@ def process_ticker(SYMBOL):
                 stop_order = StopOrder("SELL", qty, stopPrice=stop)
                 trade_stop = ib.placeOrder(contract, stop_order)
                 
-                inc(metrics, 'orders_sent')
+                inc('orders_sent')
                 logger.info(f'ORDER_SENT tag=STOP symbol={contract.symbol} qty={qty} stop={stop}')
                 attach_trade_metrics(trade_stop, 'STOP')
                 ib.sleep(1)
@@ -289,7 +292,7 @@ def process_ticker(SYMBOL):
 
     except Exception as e:
         logger.error(f"Error processing {SYMBOL}: {e}", exc_info=True)
-        inc(metrics, 'api_errors')
+        inc('api_errors')
 # --- end trading logic ---
 
 # --- Main processing loop ---
