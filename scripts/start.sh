@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-# load .env if present
+# Load .env if present
 if [ -f .env ]; then
   set -a
   source .env
   set +a
 fi
 
-set -euo pipefail
 cd "$(dirname "$0")/.."
-
 mkdir -p logs
+
+# Optional caffeinate on macOS to prevent system sleep during long runs.
+CAF_PID=""
+if [ "$(uname)" = "Darwin" ] && command -v caffeinate >/dev/null 2>&1; then
+  echo "Starting caffeinate (macOS)..."
+  caffeinate -dimsu &
+  CAF_PID=$!
+fi
 
 # Stop existing bot if running
 if [[ -f logs/bot.pid ]]; then
@@ -22,10 +29,18 @@ if [[ -f logs/bot.pid ]]; then
   fi
 fi
 
-echo "Starting bot (caffeinate + python3 -u runner_5m.py)..."
+echo "Starting bot (python3 -u runner_5m.py)..."
 # Start bot and record PYTHON pid
-caffeinate -dims python3 -u runner_5m.py >> logs/bot.log 2>&1 &
+python3 -u runner_5m.py >> logs/bot.log 2>&1 &
 echo $! > logs/bot.pid
 
 echo "Started bot pid=$(cat logs/bot.pid)"
 echo "Logs: tail -f logs/bot.log"
+
+# Cleanup caffeinate if started
+cleanup() {
+  if [ -n "${CAF_PID}" ]; then
+    kill "${CAF_PID}" || true
+  fi
+}
+trap cleanup EXIT
