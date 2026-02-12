@@ -3,6 +3,17 @@ import math
 import csv
 from datetime import datetime, timezone, date
 
+# --- monitoring / logging ---
+from infra.logger import setup_logger
+from infra.metrics import load_metrics, inc
+import os
+logger = setup_logger('logs/bot.log')
+metrics = load_metrics()
+SHUTTING_DOWN = False
+CLIENT_ID = int(os.getenv('IB_CLIENT_ID', '9'))
+logger.info('SCRIPT START trade_breakout_paper')
+# --- end monitoring ---
+
 SYMBOL = "AAPL"
 N = 12
 RISK_EUR = 200.0
@@ -13,7 +24,48 @@ LOG_FILE = "trades_log.csv"
 FORCE_TRADE = False
 
 ib = IB()
-ib.connect("127.0.0.1", 7497, clientId=8)
+ib.connect("127.0.0.1", 7497, clientId=CLIENT_ID)
+logger.info(f"IB_CONNECT host=127.0.0.1 port=7497 clientId={CLIENT_ID}")
+
+# --- IBKR event handlers ---
+def on_ib_error(reqId, errorCode, errorString, contract):
+    inc(metrics, 'api_errors')
+    sym = getattr(contract, 'symbol', None) if contract else None
+    logger.error(f'IB_ERROR reqId={reqId} code={errorCode} symbol={sym} msg={errorString}')
+
+def on_ib_disconnected():
+    # One-shot script: disconnect at end is normal.
+    logger.info('IB_DISCONNECTED')
+
+ib.errorEvent += on_ib_error
+ib.disconnectedEvent += on_ib_disconnected
+# --- end IBKR event handlers ---
+# --- order status tracking ---
+def attach_trade_metrics(trade, tag: str):
+    # tag example: 'BUY' or 'STOP'
+    def _on_status(tr):
+        st = getattr(tr.orderStatus, 'status', None)
+        filled = getattr(tr.orderStatus, 'filled', None)
+        remaining = getattr(tr.orderStatus, 'remaining', None)
+        sym = getattr(tr.contract, 'symbol', None) if getattr(tr, 'contract', None) else None
+        if st in ('Filled',):
+            inc(metrics, 'orders_filled')
+            logger.info(f'ORDER_FILLED tag={tag} symbol={sym} filled={filled} remaining={remaining}')
+        elif st in ('Cancelled', 'Inactive', 'ApiCancelled'):
+            # not necessarily a reject, but useful
+            logger.warning(f'ORDER_CANCELLED tag={tag} symbol={sym} status={st} filled={filled} remaining={remaining}')
+        elif st in ('Rejected',):
+            inc(metrics, 'orders_rejected')
+            logger.error(f'ORDER_REJECTED tag={tag} symbol={sym} status={st}')
+        else:
+            logger.info(f'ORDER_STATUS tag={tag} symbol={sym} status={st} filled={filled} remaining={remaining}')
+    try:
+        trade.statusEvent += _on_status
+    except Exception as e:
+        logger.error(f'Could not attach statusEvent: {e}')
+# --- end order status tracking ---
+
+
 
 contract = Stock(SYMBOL, "SMART", "USD")
 ib.qualifyContracts(contract)
@@ -109,12 +161,18 @@ if current_position and current_position.position != 0:
     print(f"Déjà en position: {current_position.position} -> pas de nouvelle entrée.")
     signal = False
 
+order_status = None
+stop_status = None
 if (signal or FORCE_TRADE) and qty > 0:
     action = "ENTER_LONG"
 
     # Market buy
     buy = MarketOrder("BUY", qty)
     trade_buy = ib.placeOrder(contract, buy)
+    
+    inc(metrics, 'orders_sent')
+    logger.info(f'ORDER_SENT tag=BUY symbol={contract.symbol} qty={qty}')
+    attach_trade_metrics(trade_buy, 'BUY')
     ib.sleep(2)
     order_status = trade_buy.orderStatus.status
     print("BUY status:", order_status)
@@ -133,6 +191,10 @@ if (signal or FORCE_TRADE) and qty > 0:
     else:
         stop_order = StopOrder("SELL", qty, stopPrice=stop)
         trade_stop = ib.placeOrder(contract, stop_order)
+        
+        inc(metrics, 'orders_sent')
+        logger.info(f'ORDER_SENT tag=STOP symbol={contract.symbol} qty={qty} stop={stop}')
+        attach_trade_metrics(trade_stop, 'STOP')
         ib.sleep(2)
         stop_status = trade_stop.orderStatus.status
         print("STOP status:", stop_status)
@@ -156,3 +218,13 @@ append_log({
 })
 
 ib.disconnect()
+
+
+# --- graceful shutdown ---
+SHUTTING_DOWN = True
+logger.info("SCRIPT END trade_breakout_paper")
+try:
+    ib.disconnect()
+except Exception:
+    pass
+# --- end graceful shutdown ---

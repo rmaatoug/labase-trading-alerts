@@ -1,8 +1,18 @@
+# --- AUTO-ADDED: logging + metrics ---
+from infra.logger import setup_logger
+from infra.metrics import load_metrics, inc
+
+logger = setup_logger("logs/bot.log")
+metrics = load_metrics()
+logger.info("RUNNER START")
+# --- END AUTO-ADDED ---
+
 import subprocess
+import sys
 import time
 from datetime import datetime, timedelta
 
-SCRIPT = "trade_breakout_multi_paper.py"
+SCRIPT = "trade_breakout_paper.py"
 
 def sleep_until_next_5min():
     now = datetime.now()
@@ -16,7 +26,10 @@ def sleep_until_next_5min():
     if dt > 0:
         time.sleep(dt)
 
-while True:
-    sleep_until_next_5min()
-    print("\n=== RUN", datetime.now().isoformat(timespec="seconds"), "===")
-    subprocess.run(["python3", SCRIPT], check=False)
+if __name__ == "__main__":
+    while True:
+        logger.info('heartbeat: sleeping until next 5m tick')
+        sleep_until_next_5min()
+        print("\n=== RUN", datetime.now().isoformat(timespec="seconds"), "===")
+        subprocess.run([sys.executable, SCRIPT], check=False)
+        logger.info('heartbeat: cycle completed')
