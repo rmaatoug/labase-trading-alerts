@@ -10,7 +10,9 @@ import os
 logger = setup_logger('logs/bot.log')
 metrics = load_metrics()
 SHUTTING_DOWN = False
-CLIENT_ID = int(os.getenv('IB_CLIENT_ID', '9'))
+CLIENT_ID = int(os.getenv('IBKR_CLIENT_ID', '7'))
+IB_HOST = os.getenv('IBKR_HOST', '127.0.0.1')
+IB_PORT = int(os.getenv('IBKR_PORT', '7497'))
 logger.info('SCRIPT START trade_breakout_paper')
 # --- end monitoring ---
 
@@ -22,10 +24,9 @@ MAX_POSITION_EUR = 4000
 
 LOG_FILE = "trades_log.csv"
 FORCE_TRADE = False
-
 ib = IB()
-ib.connect("127.0.0.1", 7497, clientId=CLIENT_ID)
-logger.info(f"IB_CONNECT host=127.0.0.1 port=7497 clientId={CLIENT_ID}")
+ib.connect(IB_HOST, IB_PORT, clientId=CLIENT_ID)
+logger.info(f"IB_CONNECT host={IB_HOST} port={IB_PORT} clientId={CLIENT_ID}")
 
 # --- IBKR event handlers ---
 def on_ib_error(reqId, errorCode, errorString, contract):

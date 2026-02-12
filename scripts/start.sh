@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+
+# load .env if present
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+fi
+
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
