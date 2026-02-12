@@ -108,6 +108,7 @@ def append_log(row: dict):
 # --- Trading logic for a single symbol ---
 def process_ticker(SYMBOL):
     try:
+        FORCE_TRADE = False  # Initialize local variable
         # Determine currency
         if SYMBOL.endswith('.PA') or SYMBOL.endswith('.AS'):
             # European stocks
