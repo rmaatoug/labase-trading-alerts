@@ -1,6 +1,8 @@
 <!-- Generated: guidance for AI coding agents working on labase-trading-alerts -->
 # Copilot instructions — labase-trading-alerts
 
+**IMPORTANT** — At each Codespace session start: check `CONVERSATION_CONTEXT.md` in repo root for ongoing decisions and session notes.
+
 Purpose: quick, actionable guidance so an AI assistant can be immediately productive in this repo.
 
 - Big picture:
