@@ -218,6 +218,23 @@ append_log({
     "stop_status": stop_status
 })
 
+# --- Send Telegram notification ---
+from infra.notifier import notify, fmt_event
+msg = fmt_event(
+    f"Trade Check: {SYMBOL}",
+    Signal=signal,
+    Close=f"{entry:.2f}",
+    HH=f"{hh:.2f}",
+    LL=f"{ll:.2f}",
+    Qty=qty,
+    Action=action
+)
+if notify(msg):
+    logger.info("Telegram sent OK")
+else:
+    logger.warning("Telegram send failed or disabled")
+# --- end Telegram notification ---
+
 ib.disconnect()
 
 
