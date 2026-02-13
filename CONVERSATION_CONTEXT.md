@@ -1,6 +1,6 @@
 # Contexte de conversation — labase-trading-alerts
 
-**Dernière mise à jour :** 13 février 2026 - Session complète (Production ready ✅)
+**Dernière mise à jour :** 13 février 2026 - Déploiement Hetzner en cours (95% complet ⚠️)
 
 > **⚠️ NOTE POUR L'IA** : À la fin de chaque session significative, demander à l'utilisateur si ce fichier doit être mis à jour avec les décisions/changements importants.
 
@@ -348,6 +348,129 @@ nano .env  # Remplir TOKEN et CHAT_ID
 ---
 
 ## 📌 NOTES POUR PROCHAINE SESSION
+
+### ⚠️ EN COURS : Déploiement sur Hetzner Cloud (13 fév 2026)
+
+**STATUS** : Bot presque fonctionnel, 1 problème restant à résoudre
+
+#### ✅ Ce qui fonctionne :
+- Serveur Hetzner CX21 créé et configuré (Ubuntu 22.04)
+- Utilisateur `trader` créé avec accès SSH
+- Python 3, Java 11, Xvfb, IBC installés
+- IB Gateway 10.37 (version 1037) installé et démarrant correctement
+- Repository cloné (rendu public pour simplifier)
+- Environnement Python (venv) créé avec toutes les dépendances
+- Fichier `.env` configuré avec TOKEN/CHAT_ID Telegram
+- Fichier `~/ibc/config.ini` configuré avec identifiants IBKR
+- Xvfb tourne (serveur X virtuel)
+- IB Gateway démarre via IBC (processus Java actif)
+- **Connexion Telegram : OK ✅**
+- **Connexion IBKR : OK ✅**
+
+#### ⚠️ Problème restant : API Read-Only Mode
+
+**Symptôme** :
+```
+Error 321: The API interface is currently in Read-Only mode
+```
+
+**Impact** :
+- ✅ Bot peut se connecter à IBKR
+- ✅ Bot peut lire les données (prix, positions)
+- ❌ Bot ne peut PAS passer d'ordres automatiquement
+
+**Tentatives effectuées** :
+1. ✅ Ajouté `ReadOnlyApi=no` dans `~/ibc/config.ini`
+2. ✅ Ajouté `ReadOnly=false` dans `~/Jts/jts.ini`
+3. ✅ Redémarré Gateway plusieurs fois
+4. ⚠️ Paramètre persiste → **Probablement configuré côté serveur IBKR**
+
+**Solution à tester demain** :
+1. Se connecter sur https://www.interactivebrokers.com/sso/Login
+2. Aller dans Settings → API → Settings
+3. Désactiver "Read-Only API"
+4. Sauvegarder et redémarrer Gateway
+
+#### 📋 Commandes utiles pour reprendre
+
+**Sur le serveur Hetzner (SSH)** :
+```bash
+# Se connecter
+ssh trader@VOTRE_IP_HETZNER
+
+# Vérifier que Gateway tourne
+ps aux | grep java | grep ibgateway
+netstat -tuln | grep 4002
+
+# Si Gateway ne tourne pas, le démarrer :
+export DISPLAY=:1
+Xvfb :1 -screen 0 1024x768x24 &
+sleep 3
+cd ~/ibc
+export IBC_INI=/home/trader/ibc/config.ini IBC_PATH=/home/trader/ibc TWS_PATH=/home/trader/Jts LOG_PATH=/home/trader/ibc/logs APP=GATEWAY TWS_MAJOR_VRSN=1037
+./scripts/displaybannerandlaunch.sh &
+
+# Attendre 1 minute puis tester
+cd ~/labase-trading-alerts
+source venv/bin/activate
+python3 src/main.py
+```
+
+**Fichiers importants** :
+- `~/ibc/config.ini` : Config IBC (identifiants IBKR)
+- `~/Jts/jts.ini` : Config Gateway
+- `~/labase-trading-alerts/.env` : Config bot (TOKEN/CHAT_ID)
+- `~/ibc/logs/ibc-3.19.0_GATEWAY-1037_Friday.txt` : Logs IBC
+- `~/Jts/ibgateway/1037/logs/` : Logs Gateway
+
+#### 🎯 Prochaines étapes (après résolution Read-Only)
+
+1. Résoudre Read-Only API (portail web IBKR)
+2. Tester `python3 src/main.py` → doit être OK sans erreur 321
+3. Lancer le bot : `./scripts/start.sh`
+4. Vérifier status : `./scripts/status.sh`
+5. Installer cron jobs : `./scripts/install_cron.sh`
+6. Optionnel : Installer services systemd pour auto-restart
+
+---
+
+### 📊 Architecture finale (une fois terminé)
+
+```
+Serveur Hetzner Cloud (CX21 - ~5€/mois)
+├── Xvfb (serveur X virtuel :1)
+├── IB Gateway 1037
+│   ├── Se connecte à IBKR Paper Trading
+│   └── API ouverte sur 127.0.0.1:4002
+├── Bot Python (runner_5m.py)
+│   ├── Analyse 38 tickers toutes les 5 min
+│   ├── Détecte breakouts
+│   ├── Passe ordres via API IBKR
+│   └── Envoie alertes Telegram
+├── Watchdog (cron 1h)
+├── Heartbeat (cron 9h)
+└── Rotation logs (cron minuit)
+```
+
+---
+
+## 📋 HISTORIQUE SESSION 13 FÉV 2026 (Déploiement Hetzner)
+
+- ✅ Création documentation complète (DEPLOYMENT.md, QUICKSTART.md, SECURITY.md)
+- ✅ Scripts de déploiement automatisé créés
+- ✅ Configuration IBC et systemd
+- ✅ Repository rendu public
+- ✅ Serveur Hetzner créé et configuré
+- ✅ Toutes les dépendances installées
+- ✅ IB Gateway installé et fonctionnel
+- ✅ Bot se connecte à IBKR et Telegram
+- ⚠️ Reste à résoudre : API Read-Only (config compte IBKR)
+
+**Durée totale déploiement** : ~3-4 heures (dont debugging IBC/Gateway)
+
+---
+
+## 📌 NOTES SESSION PRÉCÉDENTE (MacBook local)
 
 - ✅ Système complet et prêt pour production (13 fév 2026)
 - ✅ 38 tickers d'origine réintégrés (test en live)
