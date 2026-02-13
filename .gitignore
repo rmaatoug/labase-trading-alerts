@@ -5,6 +5,8 @@ __pycache__/
 *.pyc
 *.log
 data/
+!backups/
+backups/**/*.log
 trades_log*.csv
 performance_log*.csv
 .DS_Store

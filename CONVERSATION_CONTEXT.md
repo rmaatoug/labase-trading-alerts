@@ -1,6 +1,8 @@
 # Contexte de conversation — labase-trading-alerts
 
-**Dernière mise à jour :** 12 février 2026 (Session complète terminée)
+**Dernière mise à jour :** 13 février 2026 (Système de reporting et analyse automatisé)
+
+> **⚠️ NOTE POUR L'IA** : À la fin de chaque session significative, demander à l'utilisateur si ce fichier doit être mis à jour avec les décisions/changements importants.
 
 ---
 
@@ -155,28 +157,96 @@ MacBook a Python 3.9 alias en `python3`
 
 ## ⚙️ VARIABLES D'ENVIRONNEMENT (requis)
 
-Dans `~/.bash_profile` :
+**MIGRATION VERS .env** (13 fév 2026) :
+- ✅ Configuration centralisée dans `.env` (local uniquement)
+- ✅ Template `.env.example` commité sur GitHub
+- ✅ Plus besoin de `~/.bash_profile` pour TOKEN/CHAT_ID
+- ✅ Portabilité : facile à copier entre machines
+
+Fichier `.env` (à créer localement) :
 ```bash
-export TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN"
-export TELEGRAM_CHAT_ID="YOUR_CHAT_ID"
-export IBKR_HOST="127.0.0.1"
-export IBKR_PORT="7497"
-export IBKR_CLIENT_ID="7"
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
+IBKR_HOST=127.0.0.1
+IBKR_PORT=7497
+IBKR_CLIENT_ID=7
 ```
+
+**Setup initial** :
+```bash
+cp .env.example .env
+nano .env  # Remplir TOKEN et CHAT_ID
+```
+
+---
+
+## 📊 REPORTING & ANALYSE (Nouveau - 13 fév 2026)
+
+### Notification de démarrage
+- ✅ Message Telegram automatique au lancement du bot
+- Format : "🚀 Bot démarré le YYYY-MM-DD HH:MM:SS"
+
+### Rapport quotidien (22h automatique)
+- ✅ Envoi auto chaque jour à 22h via `runner_5m.py`
+- ✅ Contenu : capital, activité du jour, positions ouvertes
+- ✅ Métriques 30j : Sharpe ratio, max drawdown
+- ✅ Win rate et P&L si stops remplis
+- Script : `daily_report.py` (appelé automatiquement)
+
+### Historique de performance
+- ✅ **`performance_log.csv`** : sauvegarde quotidienne automatique
+- Colonnes : date, net_liquidation, available_funds, signals, entries, stops_filled, open_positions, win_rate_pct, pnl_usd
+- **Jamais écrasé** : append only (ajout chaque jour)
+- Protégé par `.gitignore` (reste local)
+
+### Analyse et optimisation
+- ✅ Script `analyze_performance.py` pour analyse détaillée
+- Métriques calculées : Sharpe ratio, max drawdown, win rate moyen
+- Recommandations automatiques selon les performances
+- Usage : `python3 analyze_performance.py [--days 30]`
+
+### Fonctions d'analyse (infra/summary.py)
+- `calculate_win_rate()` : % de trades gagnants
+- `calculate_pnl()` : Profit & Loss total
+- `calculate_sharpe_ratio()` : Rendement ajusté du risque (annualisé)
+- `calculate_max_drawdown()` : Perte max depuis le pic (%)
+- `save_daily_performance()` : Sauvegarde auto dans performance_log.csv
+- `load_performance_history()` : Charge historique pour analyse
+
+### Fichiers locaux (pas sur GitHub)
+- `trades_log.csv` → Tous les trades (détail par ticker)
+- `performance_log.csv` → Résumé quotidien (pour analyse stratégique)
+- `logs/bot.log` → Logs d'exécution
 
 ---
 
 ## 📌 NOTES POUR PROCHAINE SESSION
 
-- ✅ Système stable et testé (12 fév 2026)
-- ✅ Aucun bug connu
-- ✅ Job tournant en local sans intervention
-- ✅ Historique complet dans CONVERSATION_CONTEXT.md
-- Les 29 tickers nettoyés et validés
-- Logs disponibles 24/7 pour debug
+- ✅ Système stable et testé (12-13 fév 2026)
+- ✅ Reporting quotidien automatisé (22h)
+- ✅ Historique de performance sauvegardé
+- ✅ Outils d'analyse prêts pour optimisation
+- ✅ Configuration via .env (portabilité)
+- ⚠️  **IMPORTANT** : Fichiers de performance en local uniquement (voir section ci-dessous)
 
 **Prochaine fois** : Relire ce fichier au démarrage Codespace !
 
 ---
 
-*Last tested: 12 feb 2026, 15:10 EST → All 29 tickers analyzed clean, no errors ✅*
+## 🔄 SYNCHRONISATION FICHIERS LOCAL ↔ CODESPACES
+
+### Problématique
+- Bot tourne en **local** (MacBook) → fichiers générés localement
+- Analyse sur **Codespaces** → fichiers absents
+- `.gitignore` bloque `trades_log.csv` et `performance_log.csv` (pour sécurité)
+
+### Solutions envisagées (13 fév 2026)
+1. **Upload manuel** : Copier fichiers vers Codespaces quand besoin d'analyse
+2. **Script de backup** : Auto-upload vers GitHub (dossier backups/) ou cloud storage
+3. **Analyse locale** : Utiliser `analyze_performance.py` directement sur MacBook
+
+**Décision à prendre** : Choisir méthode de sync pour analyses futures
+
+---
+
+*Last tested: 13 fév 2026 → Notifications, reporting quotidien, analyse de performance ✅*
