@@ -48,6 +48,25 @@ Ajouts récents
  - `scripts/start.sh`: wrapper qui active `caffeinate` uniquement sur macOS si présent,
 	 puis lance `python3 src/main.py`.
 
+## 🚀 Déploiement sur serveur cloud
+
+Pour faire tourner le bot 24/7 sur un serveur Hetzner Cloud :
+
+- **[QUICKSTART.md](QUICKSTART.md)** - Déploiement rapide en 15 minutes ⚡
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Guide complet étape par étape 📖
+- **[SECURITY.md](SECURITY.md)** - Bonnes pratiques de sécurité 🔒
+
+Scripts de déploiement disponibles :
+- `scripts/setup_server.sh` - Installation automatique des dépendances
+- `scripts/deploy_bot.sh` - Déploiement complet automatisé
+- `scripts/start_ibgateway.sh` - Démarrage IB Gateway en mode headless
+- `scripts/install_systemd_services.sh` - Services système pour redémarrage auto
+
+Configuration IBC (IB Controller) :
+- `config/ibc_config_template.ini` - Template de configuration IBC
+- `config/trading-bot.service` - Service systemd pour le bot
+- `config/ibgateway.service` - Service systemd pour IB Gateway
+
 Besoin d'aide ?
  - Pour vérifier la configuration IBKR locale, assurez-vous que TWS/IB Gateway est lancé
 	 et que l'API est activée (host/port corrects).

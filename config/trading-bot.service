@@ -1,0 +1,41 @@
+# Service systemd pour Trading Bot
+# Installation : sudo cp config/trading-bot.service /etc/systemd/system/
+#                sudo systemctl daemon-reload
+#                sudo systemctl enable trading-bot
+#                sudo systemctl start trading-bot
+
+[Unit]
+Description=Trading Bot - Automated breakout strategy
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=trader
+Group=trader
+WorkingDirectory=/home/trader/labase-trading-alerts
+Environment="PATH=/home/trader/labase-trading-alerts/venv/bin:/usr/local/bin:/usr/bin"
+EnvironmentFile=/home/trader/labase-trading-alerts/.env
+
+# Commande principale
+ExecStart=/home/trader/labase-trading-alerts/venv/bin/python3 /home/trader/labase-trading-alerts/runner_5m.py
+
+# Redémarrage automatique en cas de crash
+Restart=always
+RestartSec=10
+
+# Timeout avant SIGKILL (laisse temps au bot de se déconnecter proprement)
+TimeoutStopSec=30
+
+# Logs systemd (journalctl -u trading-bot -f)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=trading-bot
+
+# Protection et limites
+NoNewPrivileges=true
+PrivateTmp=true
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

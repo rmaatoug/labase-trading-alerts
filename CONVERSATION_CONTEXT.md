@@ -357,7 +357,61 @@ nano .env  # Remplir TOKEN et CHAT_ID
 - ✅ Outils d'analyse prêts pour optimisation
 - ✅ Configuration via .env (portabilité)
 - ✅ Scripts de synchronisation pour analyse sur Codespaces
+- ✅ **Guide de déploiement Hetzner Cloud créé** (13 fév 2026)
 - ⚠️  **IMPORTANT** : Fichiers de performance en local uniquement (voir section ci-dessous)
+
+---
+
+## ☁️ DÉPLOIEMENT HETZNER CLOUD (Nouveau - 13 fév 2026)
+
+### Documentation créée
+- ✅ **QUICKSTART.md** : Déploiement rapide en 15 minutes
+- ✅ **DEPLOYMENT.md** : Guide complet étape par étape
+- ✅ **SECURITY.md** : Bonnes pratiques de sécurité
+
+### Scripts de déploiement
+- ✅ `scripts/setup_server.sh` : Installation automatique dépendances serveur
+- ✅ `scripts/deploy_bot.sh` : Déploiement complet automatisé
+- ✅ `scripts/start_ibgateway.sh` : Démarrage IB Gateway headless (Xvfb + IBC)
+- ✅ `scripts/stop_ibgateway.sh` : Arrêt propre IB Gateway
+- ✅ `scripts/install_systemd_services.sh` : Installation services système
+
+### Configuration IBC/systemd
+- ✅ `config/ibc_config_template.ini` : Template configuration IBC
+- ✅ `config/ibgateway.service` : Service systemd IB Gateway
+- ✅ `config/trading-bot.service` : Service systemd trading bot
+
+### Workflow de migration MacBook → Hetzner
+1. Créer serveur CX21 sur console.hetzner.com (~5€/mois)
+2. Lancer `setup_server.sh` (install Python, Java, Xvfb, IBC)
+3. Installer IB Gateway + configurer IBC avec identifiants IBKR
+4. Lancer `deploy_bot.sh` (clone repo + install + start)
+5. Installer services systemd pour redémarrage auto
+
+### Avantages serveur cloud vs MacBook local
+- ✅ Disponibilité 24/7 garantie (pas de mise en veille)
+- ✅ Connexion internet stable
+- ✅ Pas de dépendance matérielle personnelle
+- ✅ Sauvegarde/snapshot facile
+- ✅ Coût prévisible (~5€/mois)
+- ✅ Redémarrage auto en cas de panne (systemd)
+
+### Sécurité renforcée
+- ✅ Firewall UFW configuré
+- ✅ SSH par clé uniquement (pas de mot de passe)
+- ✅ Fail2ban contre brute force
+- ✅ Port API (4002) non exposé publiquement
+- ✅ Fichiers sensibles protégés (chmod 600)
+- ✅ Mises à jour automatiques système
+
+### Prochaine étape si migration vers Hetzner
+1. Lire QUICKSTART.md pour vue d'ensemble
+2. Suivre DEPLOYMENT.md étape par étape
+3. Vérifier SECURITY.md pour durcissement serveur
+4. Tester en paper trading d'abord
+5. Surveiller logs et Telegram quotidiennement
+
+---
 
 **Prochaine fois** : Relire ce fichier au démarrage Codespace !
 
