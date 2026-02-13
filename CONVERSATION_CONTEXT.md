@@ -1,6 +1,6 @@
 # Contexte de conversation — labase-trading-alerts
 
-**Dernière mise à jour :** 13 février 2026 (Système de reporting et analyse automatisé)
+**Dernière mise à jour :** 13 février 2026 - Session complète (Production ready ✅)
 
 > **⚠️ NOTE POUR L'IA** : À la fin de chaque session significative, demander à l'utilisateur si ce fichier doit être mis à jour avec les décisions/changements importants.
 
@@ -8,21 +8,23 @@
 
 ## 🎯 MISSION GLOBALE
 Bot de trading automatisé qui :
-- Analyse 29 tickers **toutes les 5 minutes** (via `runner_5m.py`)
+- Analyse **38 tickers** toutes les 5 minutes (via `runner_5m.py`)
 - Détecte breakout sur fenêtre 60-min (12 barres × 5 min)
 - Passe des ordres Long avec stop automatique
 - Envoie **alertes Telegram INTELLIGENTES** (signal/trade/erreur seulement)
-- Tourne **24/7 en local** sur MacBook avec TWS
+- Tourne **24/7 en local** sur MacBook avec IB Gateway
 
 ---
 
 ## 📋 STATUT ACTUEL (LIVE)
 
 ### Infrastructure
-- ✅ **MacBook local** : PC allumé 24/7 avec TWS/IBGateway actif
-- ✅ **Cron job** : `runner_5m.py` lancé toutes les 5 min
-- ✅ **IBKR** : Connecté via `127.0.0.1:7497` (API enabled)
-- ✅ **Telegram** : Bot configuré et testé (tokens en `.bash_profile`)
+- ✅ **MacBook local** : PC allumé 24/7 avec IB Gateway actif
+- ✅ **IB Gateway** : Port 4002 (Paper Trading) - Plus stable que TWS
+- ✅ **IBKR** : Connecté via `127.0.0.1:4002` (API enabled, Read-Only désactivé)
+- ✅ **Cron jobs** : Watchdog (1h), Heartbeat (9h), Rotation logs (minuit)
+- ✅ **Telegram** : Bot configuré via `.env` (local)
+- ✅ **Surveillance** : Watchdog auto-restart + alertes Telegram
 
 ### Logique Trading
 - **Stratégie** : Breakout simple (close > HH des 60 dernières min)
@@ -57,10 +59,13 @@ ORCL PARRO.PA PFE PLTR QQQ RFL RMS.PA SHELL.AS TGEN TME TSM VRT WIT XOM
 ```
 runner_5m.py (sleep jusqu'à prochain multiple de 5)
     ↓
+    ├─ Écrit heartbeat (logs/last_heartbeat.txt)
+    ├─ Déclenche daily_report.py à 22h si besoin
+    ↓
 python3 trade_breakout_paper.py
     ↓
     ├─ Connexion IBKR unique (clientId=7)
-    ├─ Pour chaque ticker:
+    ├─ Pour chaque ticker (38 tickers):
     │   ├─ Récupère 2 jours de bars 5-min
     │   ├─ Calcule HH/LL sur fenêtre N=12
     │   ├─ Test signal: close > HH?
@@ -154,7 +159,42 @@ Cron jobs créés :
 
 ---
 
-## 🚀 COMMANDES TEST
+## � AMÉLIORATIONS SESSION 13 FÉV 2026
+
+1. **Migration vers .env** ✅
+   - Configuration centralisée dans `.env` (local)
+   - Template `.env.example` commité sur GitHub
+   - Plus simple à déployer
+
+2. **IB Gateway configuré** ✅
+   - Migration TWS → IB Gateway (plus stable 24/7)
+   - Port 4002 (Paper Trading)
+   - API Settings: Read-Only désactivé
+
+3. **Système de surveillance complet** ✅
+   - Watchdog (toutes les heures) : vérifie + redémarre bot
+   - Heartbeat matinal (9h) : notification quotidienne
+   - Rotation logs (minuit) : évite saturation disque
+
+4. **Reporting et analyse** ✅
+   - Rapport quotidien automatique (22h)
+   - Sauvegarde performance_log.csv
+   - Scripts d'analyse de performance
+   - Synchronisation logs pour analyse sur Codespaces
+
+5. **Fix urllib3/LibreSSL** ✅
+   - Problème : Warning urllib3 v2 avec LibreSSL 2.8.3 (macOS system SSL)
+   - Solution : Downgrade urllib3<2.0.0 dans requirements.txt
+   - **Action requise** : `pip3 install -r requirements.txt` après git pull
+   - Plus de warning au lancement
+
+6. **38 tickers réintégrés** ✅
+   - Tous les tickers d'origine (EU + crypto)
+   - Test en live pour validation
+
+---
+
+## �🚀 COMMANDES TEST
 
 ### Sur MacBook local
 ```bash
@@ -250,9 +290,11 @@ Fichier `.env` (à créer localement) :
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
 IBKR_HOST=127.0.0.1
-IBKR_PORT=7497
+IBKR_PORT=4002
 IBKR_CLIENT_ID=7
 ```
+
+**⚠️ IMPORTANT** : Port 4002 = IB Gateway Paper Trading (préféré 24/7)
 
 **Setup initial** :
 ```bash
@@ -317,12 +359,16 @@ nano .env  # Remplir TOKEN et CHAT_ID
 **Prochaine fois** : Relire ce fichier au démarrage Codespace !
 
 **Checklist avant lancement 14 jours** :
-1. MacBook : réglages énergie (jamais mettre en veille)
-2. TWS/Gateway : vérifier connexion stable
-3. Installer cron jobs : `./scripts/install_cron.sh`
-4. Vérifier .env avec TOKEN et CHAT_ID
-5. Test : `python3 src/main.py`
-6. Lancer : `./scripts/start.sh`
+1. `git pull` → Récupérer derniers changements
+2. `pip3 install -r requirements.txt` → Fix urllib3 si nécessaire
+3. MacBook : réglages énergie (jamais mettre en veille)
+4. IB Gateway : lancer et vérifier connexion port 4002
+5. Vérifier `.env` avec TOKEN et CHAT_ID corrects
+6. Test connexion : `python3 src/main.py` (doit afficher OK)
+7. Installer cron jobs : `./scripts/install_cron.sh` puis `crontab -l` pour vérifier
+8. Lancer bot : `./scripts/start.sh`
+9. Vérifier status : `./scripts/status.sh`
+10. Observer premier cycle : `tail -f logs/bot.log`
 
 ---
 
