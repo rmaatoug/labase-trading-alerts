@@ -18,13 +18,16 @@ Bot de trading automatisé qui :
 
 ## 📋 STATUT ACTUEL (LIVE)
 
+### 🚀 PRODUCTION - Lancé le 13 février 2026 à 18h45 (bot pid=2179)
+
 ### Infrastructure
 - ✅ **MacBook local** : PC allumé 24/7 avec IB Gateway actif
 - ✅ **IB Gateway** : Port 4002 (Paper Trading) - Plus stable que TWS
 - ✅ **IBKR** : Connecté via `127.0.0.1:4002` (API enabled, Read-Only désactivé)
-- ✅ **Cron jobs** : Watchdog (1h), Heartbeat (9h), Rotation logs (minuit)
+- ✅ **Cron jobs** : Watchdog (1h), Heartbeat (9h), Rotation logs (minuit) - INSTALLÉS
 - ✅ **Telegram** : Bot configuré via `.env` (local)
-- ✅ **Surveillance** : Watchdog auto-restart + alertes Telegram
+- ✅ **Surveillance** : Watchdog auto-restart + alertes Telegram - ACTIF
+- ✅ **Caffeinate** : macOS ne s'endormira pas pendant exécution bot
 
 ### Logique Trading
 - **Stratégie** : Breakout simple (close > HH des 60 dernières min)
