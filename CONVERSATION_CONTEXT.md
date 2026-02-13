@@ -32,12 +32,13 @@ Bot de trading automatisé qui :
 - **Ordre qty** : Cappé à 500 (limite IBKR)
 - **Stop** : Au plus bas des 60 min (breakout symétrique)
 
-### Tickers Actifs (29)
+### Tickers Actifs (38)
 ```
-AAPL AMGN AMSC AMZN ASML AZN BABA CVX DPRO ESLT GOOGL INFY LMT MANH 
-META MRNA NFLX NVDA ORCL PFE PLTR QQQ RFL TGEN TME TSM VRT WIT XOM
+AAPL AM.PA AMGN AMSC AMZN ASML AZN BABA BTC-EUR CVX DPRO DSY.PA 
+EL.PA ESLT GOOGL HO.PA INFY LMT MANH MC.PA META MRNA NFLX NVDA 
+ORCL PARRO.PA PFE PLTR QQQ RFL RMS.PA SHELL.AS TGEN TME TSM VRT WIT XOM
 ```
-*(Note: Enlevés 9 tickers indisponibles sur IBKR: AM.PA, BTC-EUR, DSY.PA, EL.PA, HO.PA, MC.PA, PARRO.PA, RMS.PA, SHELL.AS)*
+*(Note: Tous les 38 tickers d'origine réintégrés le 13 fév 2026. Inclut actions EU (.PA, .AS) et crypto (BTC-EUR). Si erreurs IBKR, retirer les problématiques.)*
 
 ---
 
@@ -92,7 +93,52 @@ Après : ~0-3 notif/5 min (pertinent)
 
 ---
 
-## 🐛 BUGS FIXÉS (Session 12 fév)
+## �️ SYSTÈME DE SURVEILLANCE (Nouveau - 13 fév 2026)
+
+### Watchdog (toutes les heures)
+- ✅ Script `watchdog.py` via cron
+- Vérifie que `runner_5m.py` est actif
+- **Redémarrage automatique** si bot arrêté
+- Alerte Telegram si problème détecté
+- Vérifie heartbeat (max 2h sans activité)
+
+### Heartbeat matinal (9h quotidien)
+- ✅ Script `heartbeat_morning.py` via cron
+- Message quotidien "✅ BONJOUR - Status quotidien"
+- Inclut : status bot, uptime, nb logs du jour
+- **Assurance que tout fonctionne** chaque matin
+
+### Rotation des logs (minuit quotidien)
+- ✅ Script `log_rotation.py` via cron
+- Rotation automatique si `bot.log` > 50 MB
+- Compression gzip des anciennes archives
+- Conservation des 10 dernières archives
+- **Évite saturation disque**
+
+### Installation cron jobs
+```bash
+# Sur MacBook, après git pull
+cd ~/labase-trading-alerts
+chmod +x scripts/install_cron.sh
+./scripts/install_cron.sh
+```
+
+Cron jobs créés :
+```
+0 * * * * watchdog.py        # Toutes les heures
+0 9 * * * heartbeat_morning.py  # 9h quotidien
+0 0 * * * log_rotation.py    # Minuit quotidien
+```
+
+### Fichiers de surveillance
+- `logs/last_heartbeat.txt` : timestamp du dernier cycle (écrit par runner_5m.py)
+- `logs/watchdog.log` : logs du watchdog
+- `logs/heartbeat.log` : logs heartbeat matinal
+- `logs/rotation.log` : logs rotation
+
+---
+
+## �🐛 BUGS FIXÉS (Session 12 fév)
 
 1. **ValueError in metrics.inc()** ✅
    - Problème : `inc(metrics, 'api_errors')` (mauvais paramètre)
@@ -258,14 +304,25 @@ nano .env  # Remplir TOKEN et CHAT_ID
 
 ## 📌 NOTES POUR PROCHAINE SESSION
 
-- ✅ Système stable et testé (12-13 fév 2026)
+- ✅ Système complet et prêt pour production (13 fév 2026)
+- ✅ 38 tickers d'origine réintégrés (test en live)
 - ✅ Reporting quotidien automatisé (22h)
+- ✅ Système de surveillance actif (watchdog + heartbeat + rotation)
 - ✅ Historique de performance sauvegardé
 - ✅ Outils d'analyse prêts pour optimisation
 - ✅ Configuration via .env (portabilité)
+- ✅ Scripts de synchronisation pour analyse sur Codespaces
 - ⚠️  **IMPORTANT** : Fichiers de performance en local uniquement (voir section ci-dessous)
 
 **Prochaine fois** : Relire ce fichier au démarrage Codespace !
+
+**Checklist avant lancement 14 jours** :
+1. MacBook : réglages énergie (jamais mettre en veille)
+2. TWS/Gateway : vérifier connexion stable
+3. Installer cron jobs : `./scripts/install_cron.sh`
+4. Vérifier .env avec TOKEN et CHAT_ID
+5. Test : `python3 src/main.py`
+6. Lancer : `./scripts/start.sh`
 
 ---
 
@@ -281,8 +338,9 @@ nano .env  # Remplir TOKEN et CHAT_ID
 2. **Script de backup** : Auto-upload vers GitHub (dossier backups/) ou cloud storage
 3. **Analyse locale** : Utiliser `analyze_performance.py` directement sur MacBook
 
-**Décision à prendre** : Choisir méthode de sync pour analyses futures
+**Décision prise** : Scripts de synchronisation créés (`sync_logs.py` et `analyze_synced.py`)
 
 ---
 
-*Last tested: 13 fév 2026 → Notifications, reporting quotidien, analyse de performance ✅*
+*Last tested: 13 fév 2026 → Système complet : notifications, reporting, surveillance, analyse ✅  
+Prêt pour lancement 14 jours de trading automatisé 🚀*
