@@ -10,7 +10,12 @@ logger.info("RUNNER START")
 import subprocess
 import sys
 import time
+import os
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+from src.telegram_client import send_telegram
+
+load_dotenv()
 
 SCRIPT = "trade_breakout_paper.py"
 
@@ -27,6 +32,16 @@ def sleep_until_next_5min():
         time.sleep(dt)
 
 if __name__ == "__main__":
+    # Notification de démarrage
+    try:
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        startup_msg = f"🚀 Bot démarré le {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n✅ runner_5m.py actif"
+        send_telegram(bot_token, chat_id, startup_msg)
+        logger.info("Startup notification sent to Telegram")
+    except Exception as e:
+        logger.warning(f"Failed to send startup notification: {e}")
+    
     while True:
         logger.info('heartbeat: sleeping until next 5m tick')
         sleep_until_next_5min()
