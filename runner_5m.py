@@ -20,7 +20,17 @@ load_dotenv()
 SCRIPT = "trade_breakout_paper.py"
 DAILY_REPORT_SCRIPT = "daily_report.py"
 DAILY_REPORT_HOUR = 22  # Heure d'envoi du rapport (22h)
+HEARTBEAT_FILE = "logs/last_heartbeat.txt"
 last_report_date = None  # Tracker pour éviter les doublons
+
+def write_heartbeat():
+    """Écrit le timestamp actuel pour le watchdog"""
+    try:
+        os.makedirs("logs", exist_ok=True)
+        with open(HEARTBEAT_FILE, 'w') as f:
+            f.write(datetime.now().isoformat())
+    except Exception as e:
+        logger.warning(f"Failed to write heartbeat: {e}")
 
 def sleep_until_next_5min():
     now = datetime.now()
@@ -48,6 +58,10 @@ if __name__ == "__main__":
     while True:
         logger.info('heartbeat: sleeping until next 5m tick')
         sleep_until_next_5min()
+        
+        # Écrire heartbeat pour watchdog
+        write_heartbeat()
+        
         print("\n=== RUN", datetime.now().isoformat(timespec="seconds"), "===")
         subprocess.run([sys.executable, SCRIPT], check=False)
         logger.info('heartbeat: cycle completed')
