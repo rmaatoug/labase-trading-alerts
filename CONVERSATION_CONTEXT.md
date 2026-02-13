@@ -133,12 +133,48 @@ MacBook a Python 3.9 alias en `python3`
 ### Fichiers à observer
 - `logs/bot.log` → Détail exécution, erreurs
 - `trades_log.csv` → Historique trades (ts_utc, symbol, signal, action, qty, stop, status)
+- `performance_log.csv` → Résumé quotidien (capital, win rate, P&L)
 
 ### Metrics collectées
 - `orders_sent` → Nombre ordres lancés
 - `orders_filled` → Ordres remplis
 - `orders_rejected` → Rejets
 - `api_errors` → Erreurs IBKR
+
+---
+
+## 🔍 ANALYSE DE PERFORMANCE
+
+### Sur MacBook (local - méthode simple)
+```bash
+# Analyse complète
+python3 analyze_performance.py
+
+# Analyse période spécifique
+python3 analyze_performance.py --days 30
+python3 analyze_performance.py --days 7
+```
+
+### Sur Codespaces (après synchronisation)
+```bash
+# 1. Sur MacBook: créer backup et pusher
+python3 sync_logs.py --backup
+git add backups/ && git commit -m "backup logs" && git push
+
+# 2. Sur Codespaces: récupérer et analyser
+git pull
+python3 analyze_synced.py --latest
+```
+
+### Workflow rapide analyse
+```bash
+# MacBook uniquement (recommandé)
+python3 analyze_performance.py
+
+# OU avec sync vers Codespaces
+python3 sync_logs.py --backup && git push  # MacBook
+git pull && python3 analyze_synced.py      # Codespaces
+```
 
 ---
 
