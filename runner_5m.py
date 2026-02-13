@@ -11,13 +11,16 @@ import subprocess
 import sys
 import time
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from dotenv import load_dotenv
 from src.telegram_client import send_telegram
 
 load_dotenv()
 
 SCRIPT = "trade_breakout_paper.py"
+DAILY_REPORT_SCRIPT = "daily_report.py"
+DAILY_REPORT_HOUR = 22  # Heure d'envoi du rapport (22h)
+last_report_date = None  # Tracker pour éviter les doublons
 
 def sleep_until_next_5min():
     now = datetime.now()
@@ -48,3 +51,15 @@ if __name__ == "__main__":
         print("\n=== RUN", datetime.now().isoformat(timespec="seconds"), "===")
         subprocess.run([sys.executable, SCRIPT], check=False)
         logger.info('heartbeat: cycle completed')
+        
+        # Rapport quotidien à 22h (ou juste après)
+        now = datetime.now()
+        today = now.date()
+        if now.hour >= DAILY_REPORT_HOUR and last_report_date != today:
+            logger.info(f"Sending daily report for {today}")
+            try:
+                subprocess.run([sys.executable, DAILY_REPORT_SCRIPT], check=False)
+                last_report_date = today
+                logger.info("Daily report sent successfully")
+            except Exception as e:
+                logger.error(f"Failed to send daily report: {e}")
