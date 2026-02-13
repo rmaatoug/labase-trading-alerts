@@ -2,4 +2,4 @@ ib_insync==0.9.86
 python-dotenv==1.0.1
 requests==2.32.3
 pandas==2.2.2
-pyopenssl>=23.0.0  # Fix: permet urllib3 v2 de fonctionner avec LibreSSL (macOS)
+urllib3<2.0.0  # Fix LibreSSL sur macOS - v1.x stable et compatible
