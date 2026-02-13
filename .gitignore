@@ -6,5 +6,6 @@ __pycache__/
 *.log
 data/
 trades_log*.csv
+performance_log*.csv
 .DS_Store
 .venv/

@@ -2,6 +2,7 @@
 """
 Rapport quotidien de trading - envoyé sur Telegram
 Lance ce script en fin de journée (ex: 22h via cron)
+Sauvegarde aussi les performances dans performance_log.csv
 """
 
 from ib_insync import IB
@@ -11,6 +12,14 @@ from datetime import datetime, timezone, date
 from dotenv import load_dotenv
 from src.telegram_client import send_telegram
 from infra.logger import setup_logger
+from infra.summary import (
+    calculate_win_rate,
+    calculate_pnl,
+    save_daily_performance,
+    load_performance_history,
+    calculate_sharpe_ratio,
+    calculate_max_drawdown
+)
 
 load_dotenv()
 logger = setup_logger("logs/bot.log")
@@ -72,17 +81,44 @@ def get_account_info():
 
 
 def generate_report():
-    """Génère le rapport quotidien"""
+    """Génère le rapport quotidien et sauvegarde les performances"""
+    today = date.today()
     today_trades = read_today_trades()
     net_liq, available, positions = get_account_info()
     
-    # Stats
+    # Stats du jour
     signals = [t for t in today_trades if t.get('signal') == 'True']
     entries = [t for t in today_trades if t.get('action') == 'ENTER_LONG']
     stops_filled = [t for t in today_trades if t.get('stop_status') == 'Filled']
     
-    # Formatage message
-    msg = f"📊 **RAPPORT QUOTIDIEN** - {date.today().strftime('%d/%m/%Y')}\n\n"
+    # Calculs de performance
+    win_rate = calculate_win_rate(today_trades)
+    pnl = calculate_pnl(today_trades)
+    
+    # Sauvegarder les performances quotidiennes
+    try:
+        save_daily_performance(
+            day=today,
+            net_liq=net_liq,
+            available=available,
+            signals=len(signals),
+            entries=len(entries),
+            stops_filled=len(stops_filled),
+            open_positions=len(positions),
+            win_rate=win_rate,
+            pnl=pnl
+        )
+        logger.info(f"Daily performance saved: net_liq={net_liq}, pnl={pnl}")
+    except Exception as e:
+        logger.error(f"Failed to save daily performance: {e}")
+    
+    # Métriques historiques (30 derniers jours)
+    history = load_performance_history(days=30)
+    sharpe = calculate_sharpe_ratio(history) if len(history) >= 2 else 0.0
+    max_dd = calculate_max_drawdown(history) if history else 0.0
+    
+    # Formatage message Telegram
+    msg = f"📊 **RAPPORT QUOTIDIEN** - {today.strftime('%d/%m/%Y')}\n\n"
     
     msg += f"💰 **Capital**\n"
     msg += f"  • Net Liquidation: ${net_liq:,.0f}\n"
@@ -91,7 +127,11 @@ def generate_report():
     msg += f"📈 **Activité du jour**\n"
     msg += f"  • Signaux détectés: {len(signals)}\n"
     msg += f"  • Ordres passés: {len(entries)}\n"
-    msg += f"  • Stops remplis: {len(stops_filled)}\n\n"
+    msg += f"  • Stops remplis: {len(stops_filled)}\n"
+    if stops_filled:
+        msg += f"  • Win rate: {win_rate:.1f}%\n"
+        msg += f"  • P&L: ${pnl:,.2f}\n"
+    msg += "\n"
     
     if positions:
         msg += f"📦 **Positions ouvertes** ({len(positions)})\n"
@@ -101,6 +141,12 @@ def generate_report():
             msg += f"  • ... et {len(positions) - 10} autres\n"
     else:
         msg += f"📦 **Positions ouvertes**: Aucune\n"
+    
+    # Métriques sur 30 jours
+    if len(history) >= 2:
+        msg += f"\n📊 **Performance 30j**\n"
+        msg += f"  • Sharpe Ratio: {sharpe:.2f}\n"
+        msg += f"  • Max Drawdown: {max_dd:.2f}%\n"
     
     msg += f"\n✅ Trading terminé pour aujourd'hui"
     
