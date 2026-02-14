@@ -56,24 +56,54 @@ if __name__ == "__main__":
         logger.warning(f"Failed to send startup notification: {e}")
     
     while True:
-        logger.info('heartbeat: sleeping until next 5m tick')
-        sleep_until_next_5min()
-        
-        # Écrire heartbeat pour watchdog
-        write_heartbeat()
-        
-        print("\n=== RUN", datetime.now().isoformat(timespec="seconds"), "===")
-        subprocess.run([sys.executable, SCRIPT], check=False)
-        logger.info('heartbeat: cycle completed')
-        
-        # Rapport quotidien à 22h (ou juste après)
-        now = datetime.now()
-        today = now.date()
-        if now.hour >= DAILY_REPORT_HOUR and last_report_date != today:
-            logger.info(f"Sending daily report for {today}")
+        try:
+            logger.info('heartbeat: sleeping until next 5m tick')
+            sleep_until_next_5min()
+            
+            # Écrire heartbeat pour watchdog
+            write_heartbeat()
+            
+            print("\n=== RUN", datetime.now().isoformat(timespec="seconds"), "===")
+            result = subprocess.run([sys.executable, SCRIPT], check=False)
+            
+            # Alerter si le script de trading échoue
+            if result.returncode != 0:
+                logger.error(f"Trading script failed with exit code {result.returncode}")
+                try:
+                    error_msg = f"❌ ERREUR CRITIQUE\n\n{SCRIPT} a échoué (code {result.returncode})\n\nVérifier logs/bot.log"
+                    send_telegram(bot_token, chat_id, error_msg)
+                except Exception as e:
+                    logger.error(f"Failed to send error notification: {e}")
+            
+            logger.info('heartbeat: cycle completed')
+            
+            # Rapport quotidien à 22h (ou juste après)
+            now = datetime.now()
+            today = now.date()
+            if now.hour >= DAILY_REPORT_HOUR and last_report_date != today:
+                logger.info(f"Sending daily report for {today}")
+                try:
+                    subprocess.run([sys.executable, DAILY_REPORT_SCRIPT], check=False)
+                    last_report_date = today
+                    logger.info("Daily report sent successfully")
+                except Exception as e:
+                    logger.error(f"Failed to send daily report: {e}")
+                    
+        except KeyboardInterrupt:
+            logger.info("Bot stopped by user (Ctrl+C)")
             try:
-                subprocess.run([sys.executable, DAILY_REPORT_SCRIPT], check=False)
-                last_report_date = today
-                logger.info("Daily report sent successfully")
-            except Exception as e:
-                logger.error(f"Failed to send daily report: {e}")
+                stop_msg = f"🛑 Bot arrêté manuellement\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                send_telegram(bot_token, chat_id, stop_msg)
+            except:
+                pass
+            break
+            
+        except Exception as e:
+            logger.error(f"FATAL ERROR in runner loop: {e}", exc_info=True)
+            try:
+                crash_msg = f"💥 BOT CRASHÉ\n\nErreur fatale: {str(e)}\n\nRedémarrage par watchdog prévu dans 1h max."
+                send_telegram(bot_token, chat_id, crash_msg)
+            except:
+                pass
+            # Attendre un peu avant de réessayer (éviter boucle infinie rapide)
+            time.sleep(60)

@@ -36,12 +36,23 @@ FORCE_TRADE = False
 
 # --- Connect to Alpaca ---
 from src.alpaca_client import connect_alpaca
+from infra.notifier import notify, fmt_event
 
 try:
     alpaca = connect_alpaca()
     logger.info("ALPACA_CONNECT success")
 except Exception as e:
     logger.error(f"ALPACA_CONNECT failed: {e}")
+    # Send Telegram alert
+    try:
+        error_msg = fmt_event(
+            "❌ ERREUR ALPACA CONNEXION",
+            Erreur=str(e),
+            Action="Vérifier API keys et réseau"
+        )
+        notify(error_msg)
+    except:
+        pass
     exit(1)
 # --- end Alpaca connection ---
 
@@ -70,7 +81,17 @@ def process_ticker(SYMBOL):
         currency = "USD"
         
         # Get historical bars (2 days of 5-min data)
-        bars = alpaca.get_historical_bars(SYMBOL, days=2, timeframe='5Min')
+        try:
+            bars = alpaca.get_historical_bars(SYMBOL, days=2, timeframe='5Min')
+        except Exception as e:
+            logger.error(f"{SYMBOL}: Failed to fetch bars: {e}")
+            error_msg = fmt_event(
+                f"❌ ERREUR API ALPACA - {SYMBOL}",
+                Erreur="Impossible de récupérer les données historiques",
+                Details=str(e)
+            )
+            notify(error_msg)
+            return
 
         if not bars or len(bars) <= N:
             logger.warning(f"{SYMBOL}: Not enough bars ({len(bars)})")
@@ -134,11 +155,21 @@ def process_ticker(SYMBOL):
             FORCE_TRADE = False  # sécurité
 
         # 1 position max
-        positions = alpaca.get_positions()
-        current_position = next(
-            (p for p in positions if p.symbol == SYMBOL),
-            None
-        )
+        try:
+            positions = alpaca.get_positions()
+            current_position = next(
+                (p for p in positions if p.symbol == SYMBOL),
+                None
+            )
+        except Exception as e:
+            logger.error(f"{SYMBOL}: Failed to fetch positions: {e}")
+            error_msg = fmt_event(
+                f"❌ ERREUR API ALPACA - {SYMBOL}",
+                Erreur="Impossible de récupérer les positions",
+                Details=str(e)
+            )
+            notify(error_msg)
+            return
 
         if current_position and float(current_position.qty) != 0:
             print(f"Déjà en position: {current_position.qty} -> pas de nouvelle entrée.")
@@ -148,7 +179,19 @@ def process_ticker(SYMBOL):
             action = "ENTER_LONG"
 
             # Market buy
-            buy_order = alpaca.place_market_order(SYMBOL, qty, side='buy')
+            try:
+                buy_order = alpaca.place_market_order(SYMBOL, qty, side='buy')
+            except Exception as e:
+                logger.error(f"{SYMBOL}: Failed to place buy order: {e}")
+                error_msg = fmt_event(
+                    f"❌ ERREUR PLACEMENT ORDRE - {SYMBOL}",
+                    Type="Market BUY",
+                    Qty=qty,
+                    Erreur=str(e)
+                )
+                notify(error_msg)
+                inc('orders_rejected')
+                return
             
             if buy_order:
                 inc('orders_sent')
@@ -158,42 +201,73 @@ def process_ticker(SYMBOL):
                 time.sleep(2)
                 
                 # Check order status
-                orders = alpaca.get_orders(status='all')
-                buy_order_updated = next((o for o in orders if o.id == buy_order.id), buy_order)
-                order_status = buy_order_updated.status
-                print("BUY status:", order_status)
-                
-                if order_status in ('filled', 'FILLED'):
-                    inc('orders_filled')
+                try:
+                    orders = alpaca.get_orders(status='all')
+                    buy_order_updated = next((o for o in orders if o.id == buy_order.id), buy_order)
+                    order_status = buy_order_updated.status
+                    print("BUY status:", order_status)
+                    
+                    if order_status in ('filled', 'FILLED'):
+                        inc('orders_filled')
+                except Exception as e:
+                    logger.error(f"{SYMBOL}: Failed to check order status: {e}")
+                    order_status = "UNKNOWN"
 
                 # Protective stop
                 # Check if stop already exists
-                open_orders = alpaca.get_orders(status='open')
-                has_stop = any(
-                    (o.symbol == SYMBOL and 
-                     hasattr(o, 'stop_price') and 
-                     o.stop_price is not None)
-                    for o in open_orders
-                )
+                try:
+                    open_orders = alpaca.get_orders(status='open')
+                    has_stop = any(
+                        (o.symbol == SYMBOL and 
+                         hasattr(o, 'stop_price') and 
+                         o.stop_price is not None)
+                        for o in open_orders
+                    )
+                except Exception as e:
+                    logger.error(f"{SYMBOL}: Failed to check open orders: {e}")
+                    has_stop = False
 
                 if has_stop:
                     print("Stop déjà présent -> je n'en place pas un autre.")
                 else:
-                    stop_order = alpaca.place_stop_order(SYMBOL, qty, stop_price=stop, side='sell')
-                    
-                    if stop_order:
-                        inc('orders_sent')
-                        logger.info(f'ORDER_SENT tag=STOP symbol={SYMBOL} qty={qty} stop={stop}')
+                    try:
+                        stop_order = alpaca.place_stop_order(SYMBOL, qty, stop_price=stop, side='sell')
                         
-                        time.sleep(1)
-                        
-                        # Check stop status
-                        orders = alpaca.get_orders(status='all')
-                        stop_order_updated = next((o for o in orders if o.id == stop_order.id), stop_order)
-                        stop_status = stop_order_updated.status
-                        print("STOP status:", stop_status)
+                        if stop_order:
+                            inc('orders_sent')
+                            logger.info(f'ORDER_SENT tag=STOP symbol={SYMBOL} qty={qty} stop={stop}')
+                            
+                            time.sleep(1)
+                            
+                            # Check stop status
+                            try:
+                                orders = alpaca.get_orders(status='all')
+                                stop_order_updated = next((o for o in orders if o.id == stop_order.id), stop_order)
+                                stop_status = stop_order_updated.status
+                                print("STOP status:", stop_status)
+                            except Exception as e:
+                                logger.error(f"{SYMBOL}: Failed to check stop order status: {e}")
+                                stop_status = "UNKNOWN"
+                    except Exception as e:
+                        logger.error(f"{SYMBOL}: Failed to place stop order: {e}")
+                        error_msg = fmt_event(
+                            f"⚠️ ERREUR STOP LOSS - {SYMBOL}",
+                            Type="Stop Order",
+                            Qty=qty,
+                            StopPrice=f"{stop:.2f}",
+                            Erreur=str(e),
+                            Warning="Position non protégée!"
+                        )
+                        notify(error_msg)
+                        inc('orders_rejected')
             else:
                 logger.error(f"Failed to place buy order for {SYMBOL}")
+                error_msg = fmt_event(
+                    f"❌ ERREUR ORDRE BUY - {SYMBOL}",
+                    Qty=qty,
+                    Erreur="Buy order returned None"
+                )
+                notify(error_msg)
                 inc('orders_rejected')
 
         else:
@@ -239,6 +313,16 @@ def process_ticker(SYMBOL):
     except Exception as e:
         logger.error(f"Error processing {SYMBOL}: {e}", exc_info=True)
         inc('api_errors')
+        # Send Telegram alert for unexpected errors
+        try:
+            error_msg = fmt_event(
+                f"❌ ERREUR INATTENDUE - {SYMBOL}",
+                Erreur=str(e)[:200],  # Limit error message length
+                Action="Vérifier logs/bot.log"
+            )
+            notify(error_msg)
+        except:
+            pass
 # --- end trading logic ---
 
 # --- Main processing loop ---
@@ -256,6 +340,16 @@ if __name__ == "__main__":
         logger.info("All tickers processed successfully")
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
+        # Send Telegram alert for fatal errors
+        try:
+            error_msg = fmt_event(
+                "💥 ERREUR FATALE BOT",
+                Erreur=str(e)[:200],
+                Action="Vérifier logs/bot.log immédiatement"
+            )
+            notify(error_msg)
+        except:
+            pass
     finally:
         # Disconnect at the very end
         try:
