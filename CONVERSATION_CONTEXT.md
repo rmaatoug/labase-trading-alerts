@@ -203,17 +203,35 @@ python3 analyze_performance.py --days 30
 - ✅ Mis à jour .env et documentation
 - ✅ Nettoyé CONVERSATION_CONTEXT.md (supprimé infos sensibles)
 - ✅ Déployé sur GitHub
-- ✅ Déployé sur serveur
+- ✅ Fix Python 3.12 incompatibilité → Python 3.11 via deadsnakes PPA
+- ✅ Déployé sur serveur Hetzner (root@46.225.143.230)
+- ✅ Bot opérationnel 24/7 avec cron jobs
+
+**Notifications Telegram améliorées (commit 54e1f26)** :
+- ✅ **runner_5m.py** : alertes crash fatal, erreur subprocess, arrêt manuel
+- ✅ **trade_breakout_paper.py** : alertes pour toutes erreurs API
+  - Erreur connexion Alpaca
+  - Erreur récupération données (`get_historical_bars`)
+  - Erreur récupération positions (`get_positions`)
+  - Erreur placement ordre BUY
+  - ⚠️ **Alerte critique** : échec stop-loss (position non protégée)
+  - Erreur inattendue (catch-all)
 
 **Raison migration** :
-- IBKR : problèmes de déploiement serveur (dialogue bloquant non résolu)
-- Alpaca : setup simple, API stable, paper trading gratuit, $0 commission
+- IBKR : problèmes de déploiement serveur (dialogue bloquant non résolu après 6h)
+- Alpaca : setup simple (15 min), API stable, paper trading gratuit, $0 commission
 
 **Limitations acceptées** :
 - Alpaca : US markets uniquement (pas EU/crypto)
-- Tickers ajustés en conséquence
+- Tickers réduits de 38 → 29 (supprimé .PA, .AS, BTC-EUR)
+
+**Infrastructure serveur** :
+- Hetzner Cloud CX21 (Ubuntu 24.04)
+- Python 3.11 dans venv
+- Cron jobs : watchdog (1h), heartbeat (9h), rotation (minuit), report (22h)
+- Bot lancé via nohup, PID dans logs/bot.pid
 
 ---
 
-*Last tested: 14 fév 2026 → Migration Alpaca complète ✅  
-Prêt pour lancement 24/7 sur serveur 🚀*
+*Last tested: 14 fév 2026 22h → Bot en production 24/7 ✅  
+Alertes Telegram actives pour toutes erreurs critiques 🚨*
