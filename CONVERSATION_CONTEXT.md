@@ -93,21 +93,30 @@ python3 trade_breakout_paper.py
 
 ## ⚙️ VARIABLES D'ENVIRONNEMENT (requis)
 
-Fichier `.env` (à créer localement et sur serveur) :
+
+Fichier `.env` (à créer localement et sur serveur) :
 ```bash
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
 
 ALPACA_API_KEY=your_alpaca_key_here
 ALPACA_SECRET_KEY=your_alpaca_secret_here
-ALPACA_BASE_URL=https://paper-api.alpaca.markets/v2
+ALPACA_BASE_URL=https://paper-api.alpaca.markets
 ```
 
-**⚠️ IMPORTANT** : 
-- Paper Trading URL: `https://paper-api.alpaca.markets/v2` (avec `/v2`)
-- Live Trading URL: `https://api.alpaca.markets/v2`
+**⚠️ IMPORTANT** :
+- Paper Trading URL : `https://paper-api.alpaca.markets` (**SANS** `/v2`)
+- Live Trading URL : `https://api.alpaca.markets`
 - Les clés Paper commencent par `PK` (Paper Key)
 - Ne JAMAIS utiliser de clés Live avec l'URL Paper (erreur `unauthorized`)
+- Le SDK Alpaca ajoute `/v2` automatiquement (ne jamais le mettre dans `.env`)
+
+**Synthèse utile pour la prochaine session :**
+- `.env` ne doit jamais être versionné ni écrasé par git pull (protégé par .gitignore)
+- Pour Paper Trading, toujours : `ALPACA_BASE_URL=https://paper-api.alpaca.markets`
+- Si tu modifies `.env`, toujours redémarrer le bot (`./scripts/stop.sh && ./scripts/start.sh`)
+- Le bot tourne 24/7 sur le serveur Hetzner, analyse toutes les 5 min, et t’alerte sur Telegram en cas de problème ou de trade
+
 
 **Setup initial** :
 ```bash
