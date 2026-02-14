@@ -4,6 +4,9 @@
 
 cd "$(dirname "$0")/.."
 
+# Créer dossier logs si nécessaire
+mkdir -p logs
+
 # Check si déjà lancé
 if [ -f "logs/bot.pid" ]; then
     PID=$(cat logs/bot.pid)

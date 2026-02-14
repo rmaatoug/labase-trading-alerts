@@ -50,11 +50,15 @@ pip install --upgrade pip wheel setuptools
 echo "📦 Installation des dépendances..."
 pip install -r requirements.txt
 
+# 9. Créer dossier logs
+echo "📁 Création dossier logs..."
+mkdir -p logs
+
 echo ""
 echo "=== Installation terminée ! ==="
 echo ""
 
-# 9. Test de connectivité (si .env existe)
+# 10. Test de connectivité (si .env existe)
 if [ -f ".env" ]; then
     echo "🧪 Test de connectivité..."
     echo ""
