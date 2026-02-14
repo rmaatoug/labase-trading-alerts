@@ -1,19 +1,18 @@
-from ib_insync import *
 import math
 import csv
 import json
 from datetime import datetime, timezone, date
+import time
 
 # --- monitoring / logging ---
 from infra.logger import setup_logger
 from infra.metrics import load_metrics, inc
 import os
+
 logger = setup_logger('logs/bot.log')
 metrics = load_metrics()
 SHUTTING_DOWN = False
-CLIENT_ID = int(os.getenv('IBKR_CLIENT_ID', '7'))
-IB_HOST = os.getenv('IBKR_HOST', '127.0.0.1')
-IB_PORT = int(os.getenv('IBKR_PORT', '7497'))
+
 logger.info('SCRIPT START trade_breakout_paper')
 # --- end monitoring ---
 
@@ -34,60 +33,17 @@ MAX_POSITION_EUR = 4000
 
 LOG_FILE = "trades_log.csv"
 FORCE_TRADE = False
-ib = IB()
-ib.connect(IB_HOST, IB_PORT, clientId=CLIENT_ID)
-logger.info(f"IB_CONNECT host={IB_HOST} port={IB_PORT} clientId={CLIENT_ID}")
 
-# --- IBKR event handlers ---
-def on_ib_error(reqId, errorCode, errorString, contract):
-    inc('api_errors')
-    sym = getattr(contract, 'symbol', None) if contract else None
-    logger.error(f'IB_ERROR reqId={reqId} code={errorCode} symbol={sym} msg={errorString}')
-    
-    # Critical error: notify on disconnect without reconnect
-    if errorCode in (1100, 1101, 1102):  # IB disconnect codes
-        from infra.notifier import notify, fmt_event
-        msg = fmt_event(
-            "⚠️ IBKR DISCONNECTED",
-            Error=f"Code {errorCode}",
-            Message=errorString
-        )
-        notify(msg)
-        logger.critical(f"IBKR disconnect error notified: {errorString}")
+# --- Connect to Alpaca ---
+from src.alpaca_client import connect_alpaca
 
-def on_ib_disconnected():
-    # One-shot script: disconnect at end is normal.
-    logger.info('IB_DISCONNECTED')
-
-ib.errorEvent += on_ib_error
-ib.disconnectedEvent += on_ib_disconnected
-# --- end IBKR event handlers ---
-
-# --- order status tracking ---
-def attach_trade_metrics(trade, tag: str):
-    # tag example: 'BUY' or 'STOP'
-    def _on_status(tr):
-        st = getattr(tr.orderStatus, 'status', None)
-        filled = getattr(tr.orderStatus, 'filled', None)
-        remaining = getattr(tr.orderStatus, 'remaining', None)
-        sym = getattr(tr.contract, 'symbol', None) if getattr(tr, 'contract', None) else None
-        if st in ('Filled',):
-            inc(metrics, 'orders_filled')
-            logger.info(f'ORDER_FILLED tag={tag} symbol={sym} filled={filled} remaining={remaining}')
-        elif st in ('Cancelled', 'Inactive', 'ApiCancelled'):
-            # not necessarily a reject, but useful
-            logger.warning(f'ORDER_CANCELLED tag={tag} symbol={sym} status={st} filled={filled} remaining={remaining}')
-        elif st in ('Rejected',):
-            inc(metrics, 'orders_rejected')
-            logger.error(f'ORDER_REJECTED tag={tag} symbol={sym} status={st}')
-        else:
-            logger.info(f'ORDER_STATUS tag={tag} symbol={sym} status={st} filled={filled} remaining={remaining}')
-    try:
-        trade.statusEvent += _on_status
-    except Exception as e:
-        logger.error(f'Could not attach statusEvent: {e}')
-        inc('event_attachment_errors')
-# --- end order status tracking ---
+try:
+    alpaca = connect_alpaca()
+    logger.info("ALPACA_CONNECT success")
+except Exception as e:
+    logger.error(f"ALPACA_CONNECT failed: {e}")
+    exit(1)
+# --- end Alpaca connection ---
 
 # --- logging helper ---
 def append_log(row: dict):
@@ -109,36 +65,12 @@ def append_log(row: dict):
 def process_ticker(SYMBOL):
     try:
         FORCE_TRADE = False  # Initialize local variable
-        # Determine currency
-        if SYMBOL.endswith('.PA') or SYMBOL.endswith('.AS'):
-            # European stocks
-            currency = "EUR"
-            exchange = "SMART"
-        elif SYMBOL in ('BTC-EUR',):
-            # Crypto
-            currency = "EUR"
-            exchange = "SMART"
-        else:
-            # US stocks
-            currency = "USD"
-            exchange = "SMART"
         
-        contract = Stock(SYMBOL, exchange, currency)
-        ib.qualifyContracts(contract)
+        # Alpaca only supports US stocks
+        currency = "USD"
         
-        if not contract.conId:
-            logger.warning(f"Could not qualify contract: {SYMBOL}")
-            return
-
-        bars = ib.reqHistoricalData(
-            contract,
-            endDateTime="",
-            durationStr="2 D",
-            barSizeSetting="5 mins",
-            whatToShow="TRADES",
-            useRTH=True,
-            formatDate=1
-        )
+        # Get historical bars (2 days of 5-min data)
+        bars = alpaca.get_historical_bars(SYMBOL, days=2, timeframe='5Min')
 
         if not bars or len(bars) <= N:
             logger.warning(f"{SYMBOL}: Not enough bars ({len(bars)})")
@@ -158,17 +90,14 @@ def process_ticker(SYMBOL):
 
         qty = 0
         if risk_per_share_usd > 0:
-            if currency == "USD":
-                risk_per_share_eur = risk_per_share_usd * FX_USD_EUR
-            else:
-                risk_per_share_eur = risk_per_share_usd
+            risk_per_share_eur = risk_per_share_usd * FX_USD_EUR
             qty_risk = math.floor(RISK_EUR / risk_per_share_eur)
 
-            price_eur = entry * (FX_USD_EUR if currency == "USD" else 1.0)
+            price_eur = entry * FX_USD_EUR
             qty_value = math.floor(MAX_POSITION_EUR / price_eur) if price_eur > 0 else 0
 
             qty = min(qty_risk, qty_value)
-            # Cap at IBKR order limit (500)
+            # Cap at 500 for safety
             qty = min(qty, 500)
 
         now = datetime.now(timezone.utc).isoformat()
@@ -205,51 +134,67 @@ def process_ticker(SYMBOL):
             FORCE_TRADE = False  # sécurité
 
         # 1 position max
-        positions = ib.positions()
+        positions = alpaca.get_positions()
         current_position = next(
-            (p for p in positions if p.contract.symbol == SYMBOL),
+            (p for p in positions if p.symbol == SYMBOL),
             None
         )
 
-        if current_position and current_position.position != 0:
-            print(f"Déjà en position: {current_position.position} -> pas de nouvelle entrée.")
+        if current_position and float(current_position.qty) != 0:
+            print(f"Déjà en position: {current_position.qty} -> pas de nouvelle entrée.")
             signal = False
 
         if (signal or FORCE_TRADE) and qty > 0:
             action = "ENTER_LONG"
 
             # Market buy
-            buy = MarketOrder("BUY", qty)
-            trade_buy = ib.placeOrder(contract, buy)
+            buy_order = alpaca.place_market_order(SYMBOL, qty, side='buy')
             
-            inc('orders_sent')
-            logger.info(f'ORDER_SENT tag=BUY symbol={contract.symbol} qty={qty}')
-            attach_trade_metrics(trade_buy, 'BUY')
-            ib.sleep(1)
-            order_status = trade_buy.orderStatus.status
-            print("BUY status:", order_status)
-
-            # Protective stop (avoid duplicates)
-            open_trades = ib.trades()
-            has_stop = any(
-                (t.contract.symbol == SYMBOL
-                 and getattr(t.order, "orderType", "") == "STP"
-                 and t.orderStatus.status not in ("Cancelled", "Filled"))
-                for t in open_trades
-            )
-
-            if has_stop:
-                print("Stop déjà présent -> je n'en place pas un autre.")
-            else:
-                stop_order = StopOrder("SELL", qty, stopPrice=stop)
-                trade_stop = ib.placeOrder(contract, stop_order)
-                
+            if buy_order:
                 inc('orders_sent')
-                logger.info(f'ORDER_SENT tag=STOP symbol={contract.symbol} qty={qty} stop={stop}')
-                attach_trade_metrics(trade_stop, 'STOP')
-                ib.sleep(1)
-                stop_status = trade_stop.orderStatus.status
-                print("STOP status:", stop_status)
+                logger.info(f'ORDER_SENT tag=BUY symbol={SYMBOL} qty={qty}')
+                
+                # Wait a bit for order to fill
+                time.sleep(2)
+                
+                # Check order status
+                orders = alpaca.get_orders(status='all')
+                buy_order_updated = next((o for o in orders if o.id == buy_order.id), buy_order)
+                order_status = buy_order_updated.status
+                print("BUY status:", order_status)
+                
+                if order_status in ('filled', 'FILLED'):
+                    inc('orders_filled')
+
+                # Protective stop
+                # Check if stop already exists
+                open_orders = alpaca.get_orders(status='open')
+                has_stop = any(
+                    (o.symbol == SYMBOL and 
+                     hasattr(o, 'stop_price') and 
+                     o.stop_price is not None)
+                    for o in open_orders
+                )
+
+                if has_stop:
+                    print("Stop déjà présent -> je n'en place pas un autre.")
+                else:
+                    stop_order = alpaca.place_stop_order(SYMBOL, qty, stop_price=stop, side='sell')
+                    
+                    if stop_order:
+                        inc('orders_sent')
+                        logger.info(f'ORDER_SENT tag=STOP symbol={SYMBOL} qty={qty} stop={stop}')
+                        
+                        time.sleep(1)
+                        
+                        # Check stop status
+                        orders = alpaca.get_orders(status='all')
+                        stop_order_updated = next((o for o in orders if o.id == stop_order.id), stop_order)
+                        stop_status = stop_order_updated.status
+                        print("STOP status:", stop_status)
+            else:
+                logger.error(f"Failed to place buy order for {SYMBOL}")
+                inc('orders_rejected')
 
         else:
             print(f"[{SYMBOL}] No trade.")
@@ -273,7 +218,7 @@ def process_ticker(SYMBOL):
         from infra.notifier import notify, fmt_event
         
         # Only notify on: signal, trade execution, or errors
-        should_notify = signal or action == "ENTER_LONG" or order_status == "Filled" or stop_status == "Filled"
+        should_notify = signal or action == "ENTER_LONG" or order_status in ('filled', 'FILLED') or stop_status in ('filled', 'FILLED')
         
         if should_notify:
             msg = fmt_event(
@@ -303,7 +248,7 @@ if __name__ == "__main__":
         for symbol in TICKERS:
             try:
                 process_ticker(symbol)
-                ib.sleep(0.5)  # Small delay between tickers
+                time.sleep(0.5)  # Small delay between tickers
             except Exception as e:
                 logger.error(f"Failed to process {symbol}: {e}")
                 continue
@@ -314,7 +259,7 @@ if __name__ == "__main__":
     finally:
         # Disconnect at the very end
         try:
-            ib.disconnect()
+            alpaca.disconnect()
         except Exception:
             pass
         SHUTTING_DOWN = True

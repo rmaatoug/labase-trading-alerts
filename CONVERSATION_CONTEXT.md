@@ -1,49 +1,43 @@
 # Contexte de conversation — labase-trading-alerts
 
-**Dernière mise à jour :** 13 février 2026 - Déploiement Hetzner en cours (95% complet ⚠️)
+**Dernière mise à jour :** 14 février 2026 soir - Migration complète vers Alpaca ✅
 
 > **⚠️ NOTE POUR L'IA** : À la fin de chaque session significative, demander à l'utilisateur si ce fichier doit être mis à jour avec les décisions/changements importants.
+> **🚨 SÉCURITÉ** : Ne JAMAIS enregistrer d'identifiants, mots de passe ou tokens dans ce fichier.
 
 ---
 
 ## 🎯 MISSION GLOBALE
 Bot de trading automatisé qui :
-- Analyse **38 tickers** toutes les 5 minutes (via `runner_5m.py`)
+- Analyse **tickers US** toutes les 5 minutes (via `runner_5m.py`)
 - Détecte breakout sur fenêtre 60-min (12 barres × 5 min)
-- Passe des ordres Long avec stop automatique
+- Passe des ordres Long avec stop automatique via **Alpaca API**
 - Envoie **alertes Telegram INTELLIGENTES** (signal/trade/erreur seulement)
-- Tourne **24/7 en local** sur MacBook avec IB Gateway
+- Tourne **24/7 sur serveur** avec Alpaca Paper Trading (gratuit, $0 commission)
 
 ---
 
-## 📋 STATUT ACTUEL (LIVE)
+## 📋 STATUT ACTUEL
 
-### 🚀 PRODUCTION - Lancé le 13 février 2026 à 18h45 (bot pid=2179)
+### 🚀 PRODUCTION - Alpaca Paper Trading
 
 ### Infrastructure
-- ✅ **MacBook local** : PC allumé 24/7 avec IB Gateway actif
-- ✅ **IB Gateway** : Port 4002 (Paper Trading) - Plus stable que TWS
-- ✅ **IBKR** : Connecté via `127.0.0.1:4002` (API enabled, Read-Only désactivé)
-- ✅ **Cron jobs** : Watchdog (1h), Heartbeat (9h), Rotation logs (minuit) - INSTALLÉS
-- ✅ **Telegram** : Bot configuré via `.env` (local)
-- ✅ **Surveillance** : Watchdog auto-restart + alertes Telegram - ACTIF
-- ✅ **Caffeinate** : macOS ne s'endormira pas pendant exécution bot
+- ✅ **Serveur cloud** : Déployé et opérationnel 24/7
+- ✅ **Alpaca API** : Paper Trading gratuit (https://alpaca.markets)
+- ✅ **Telegram** : Bot configuré via `.env`
+- ✅ **Surveillance** : Watchdog auto-restart + alertes Telegram
+- ✅ **Cron jobs** : Watchdog (1h), Heartbeat (9h), Rotation logs (minuit)
 
 ### Logique Trading
 - **Stratégie** : Breakout simple (close > HH des 60 dernières min)
-- **Fenêtre** : N=12 barres (60 min)
+- **Fenêtre** : N=12 barres (60 min avec barres 5min)
 - **Risque** : 200€ par trade
 - **Position** : Max 1 par ticker par jour (safeguard)
-- **Ordre qty** : Cappé à 500 (limite IBKR)
 - **Stop** : Au plus bas des 60 min (breakout symétrique)
 
-### Tickers Actifs (38)
-```
-AAPL AM.PA AMGN AMSC AMZN ASML AZN BABA BTC-EUR CVX DPRO DSY.PA 
-EL.PA ESLT GOOGL HO.PA INFY LMT MANH MC.PA META MRNA NFLX NVDA 
-ORCL PARRO.PA PFE PLTR QQQ RFL RMS.PA SHELL.AS TGEN TME TSM VRT WIT XOM
-```
-*(Note: Tous les 38 tickers d'origine réintégrés le 13 fév 2026. Inclut actions EU (.PA, .AS) et crypto (BTC-EUR). Si erreurs IBKR, retirer les problématiques.)*
+### Tickers Actifs
+Stocks US liquides uniquement (Alpaca supporte US markets seulement).
+Configuration dans `tickers.json`.
 
 ---
 
@@ -51,9 +45,9 @@ ORCL PARRO.PA PFE PLTR QQQ RFL RMS.PA SHELL.AS TGEN TME TSM VRT WIT XOM
 
 ### Fichiers clés
 - `runner_5m.py` → Boucle infinie, lance `trade_breakout_paper.py` toutes les 5 min
-- `trade_breakout_paper.py` → Charge tickers.json → boucle sur 29 symboles → 1 connexion IBKR
+- `trade_breakout_paper.py` → Script principal de trading
 - `tickers.json` → Configuration tickers (facile à modifier)
-- `src/ibkr_client.py` → Helper IBKR
+- `src/alpaca_client.py` → Helper Alpaca API (remplace ibkr_client.py)
 - `src/telegram_client.py` → POST Telegram
 - `infra/metrics.py` → Simple counter/gauge metrics
 - `infra/notifier.py` → Formatage messages Telegram
@@ -67,17 +61,17 @@ runner_5m.py (sleep jusqu'à prochain multiple de 5)
     ↓
 python3 trade_breakout_paper.py
     ↓
-    ├─ Connexion IBKR unique (clientId=7)
-    ├─ Pour chaque ticker (38 tickers):
-    │   ├─ Récupère 2 jours de bars 5-min
+    ├─ Connexion Alpaca API
+    ├─ Pour chaque ticker:
+    │   ├─ Récupère bars 5-min via Alpaca API
     │   ├─ Calcule HH/LL sur fenêtre N=12
     │   ├─ Test signal: close > HH?
     │   ├─ Si YES + qty > 0 + pas position: TRADE
     │   ├─ Notification Telegram si signal/trade/erreur
     │   ├─ Log dans trades_log.csv
     │   └─ Pause 0.5s
-    ├─ Déconnexion IBKR
-    └─ Fin
+    ├─ Fin
+    └─ Retour
 ```
 
 ---
@@ -88,132 +82,54 @@ python3 trade_breakout_paper.py
 - ✅ Signal détecté (`Signal=True`)
 - ✅ Achat exécuté (`Action=ENTER_LONG`)
 - ✅ Stop rempli (`stop_status=Filled`)
-- ✅ Erreur critique IBKR (codes 1100/1101/1102)
+- ✅ Erreur critique API
 
 ### PAS envoyées si :
 - ❌ `Signal=False` et `Action=NO_TRADE`
 - ❌ Ticker bloqué (déjà tradé aujourd'hui)
 - ❌ Pas assez de qty disponible
 
-### Résultat
-Avant : ~38 notif/5 min (bruit)  
-Après : ~0-3 notif/5 min (pertinent)
-
 ---
 
-## �️ SYSTÈME DE SURVEILLANCE (Nouveau - 13 fév 2026)
+## ⚙️ VARIABLES D'ENVIRONNEMENT (requis)
 
-### Watchdog (toutes les heures)
-- ✅ Script `watchdog.py` via cron
-- Vérifie que `runner_5m.py` est actif
-- **Redémarrage automatique** si bot arrêté
-- Alerte Telegram si problème détecté
-- Vérifie heartbeat (max 2h sans activité)
-
-### Heartbeat matinal (9h quotidien)
-- ✅ Script `heartbeat_morning.py` via cron
-- Message quotidien "✅ BONJOUR - Status quotidien"
-- Inclut : status bot, uptime, nb logs du jour
-- **Assurance que tout fonctionne** chaque matin
-
-### Rotation des logs (minuit quotidien)
-- ✅ Script `log_rotation.py` via cron
-- Rotation automatique si `bot.log` > 50 MB
-- Compression gzip des anciennes archives
-- Conservation des 10 dernières archives
-- **Évite saturation disque**
-
-### Installation cron jobs
+Fichier `.env` (à créer localement et sur serveur) :
 ```bash
-# Sur MacBook, après git pull
-cd ~/labase-trading-alerts
-chmod +x scripts/install_cron.sh
-./scripts/install_cron.sh
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
+
+ALPACA_API_KEY=your_alpaca_key_here
+ALPACA_SECRET_KEY=your_alpaca_secret_here
+ALPACA_BASE_URL=https://paper-api.alpaca.markets
 ```
 
-Cron jobs créés :
-```
-0 * * * * watchdog.py        # Toutes les heures
-0 9 * * * heartbeat_morning.py  # 9h quotidien
-0 0 * * * log_rotation.py    # Minuit quotidien
-```
-
-### Fichiers de surveillance
-- `logs/last_heartbeat.txt` : timestamp du dernier cycle (écrit par runner_5m.py)
-- `logs/watchdog.log` : logs du watchdog
-- `logs/heartbeat.log` : logs heartbeat matinal
-- `logs/rotation.log` : logs rotation
-
----
-
-## �🐛 BUGS FIXÉS (Session 12 fév)
-
-1. **ValueError in metrics.inc()** ✅
-   - Problème : `inc(metrics, 'api_errors')` (mauvais paramètre)
-   - Solution : Changé en `inc('api_errors')`
-
-2. **Tickers invalides** ✅
-   - Problème : 9 tickers non disponibles sur IBKR
-   - Solution : Enlevés (38→29)
-
-3. **Order qty trop élevée** ✅
-   - Problème : RFL tentait qty=3623 → IBKR reject (limit 500)
-   - Solution : Cappé qty à 500
-
----
-
-## � AMÉLIORATIONS SESSION 13 FÉV 2026
-
-1. **Migration vers .env** ✅
-   - Configuration centralisée dans `.env` (local)
-   - Template `.env.example` commité sur GitHub
-   - Plus simple à déployer
-
-2. **IB Gateway configuré** ✅
-   - Migration TWS → IB Gateway (plus stable 24/7)
-   - Port 4002 (Paper Trading)
-   - API Settings: Read-Only désactivé
-
-3. **Système de surveillance complet** ✅
-   - Watchdog (toutes les heures) : vérifie + redémarre bot
-   - Heartbeat matinal (9h) : notification quotidienne
-   - Rotation logs (minuit) : évite saturation disque
-
-4. **Reporting et analyse** ✅
-   - Rapport quotidien automatique (22h)
-   - Sauvegarde performance_log.csv
-   - Scripts d'analyse de performance
-   - Synchronisation logs pour analyse sur Codespaces
-
-5. **Fix urllib3/LibreSSL** ✅
-   - Problème : Warning urllib3 v2 avec LibreSSL 2.8.3 (macOS system SSL)
-   - Solution : Downgrade urllib3<2.0.0 dans requirements.txt
-   - **Action requise** : `pip3 install -r requirements.txt` après git pull
-   - Plus de warning au lancement
-
-6. **38 tickers réintégrés** ✅
-   - Tous les tickers d'origine (EU + crypto)
-   - Test en live pour validation
-
----
-
-## �🚀 COMMANDES TEST
-
-### Sur MacBook local
+**Setup initial** :
 ```bash
-# Test connectivité Telegram + IBKR
+cp .env.example .env
+nano .env  # Remplir les clés API
+```
+
+**⚠️ IMPORTANT** : `.env` n'est JAMAIS commité sur GitHub (protégé par .gitignore)
+
+---
+
+## 🚀 COMMANDES TEST
+
+### Test connectivité Telegram + Alpaca
+```bash
 python3 src/main.py
+```
 
-# Run trading bot une fois
+### Run trading bot une fois
+```bash
 python3 trade_breakout_paper.py
+```
 
-# Check logs
+### Check logs
+```bash
 tail -f logs/bot.log
 cat trades_log.csv
 ```
-
-### Important : `python3` requis (pas `python`)
-MacBook a Python 3.9 alias en `python3`
 
 ---
 
@@ -228,41 +144,22 @@ MacBook a Python 3.9 alias en `python3`
 - `orders_sent` → Nombre ordres lancés
 - `orders_filled` → Ordres remplis
 - `orders_rejected` → Rejets
-- `api_errors` → Erreurs IBKR
+- `api_errors` → Erreurs API
 
 ---
 
-## 🔍 ANALYSE DE PERFORMANCE
+## 📊 REPORTING & ANALYSE
 
-### Sur MacBook (local - méthode simple)
+### Rapport quotidien (22h automatique)
+- ✅ Envoi auto chaque jour à 22h via `runner_5m.py`
+- ✅ Contenu : capital, activité du jour, positions ouvertes
+- ✅ Métriques 30j : Sharpe ratio, max drawdown
+- Script : `daily_report.py`
+
+### Analyse de performance
 ```bash
-# Analyse complète
 python3 analyze_performance.py
-
-# Analyse période spécifique
 python3 analyze_performance.py --days 30
-python3 analyze_performance.py --days 7
-```
-
-### Sur Codespaces (après synchronisation)
-```bash
-# 1. Sur MacBook: créer backup et pusher
-python3 sync_logs.py --backup
-git add backups/ && git commit -m "backup logs" && git push
-
-# 2. Sur Codespaces: récupérer et analyser
-git pull
-python3 analyze_synced.py --latest
-```
-
-### Workflow rapide analyse
-```bash
-# MacBook uniquement (recommandé)
-python3 analyze_performance.py
-
-# OU avec sync vers Codespaces
-python3 sync_logs.py --backup && git push  # MacBook
-git pull && python3 analyze_synced.py      # Codespaces
 ```
 
 ---
@@ -280,293 +177,43 @@ git pull && python3 analyze_synced.py      # Codespaces
 
 ---
 
-## ⚙️ VARIABLES D'ENVIRONNEMENT (requis)
+## 🐛 TROUBLESHOOTING
 
-**MIGRATION VERS .env** (13 fév 2026) :
-- ✅ Configuration centralisée dans `.env` (local uniquement)
-- ✅ Template `.env.example` commité sur GitHub
-- ✅ Plus besoin de `~/.bash_profile` pour TOKEN/CHAT_ID
-- ✅ Portabilité : facile à copier entre machines
+### Error: Alpaca authentication failed
+→ Vérifier `.env` : `ALPACA_API_KEY` et `ALPACA_SECRET_KEY` correctes
 
-Fichier `.env` (à créer localement) :
-```bash
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-TELEGRAM_CHAT_ID=your_chat_id_here
-IBKR_HOST=127.0.0.1
-IBKR_PORT=4002
-IBKR_CLIENT_ID=7
-```
+### Error: Alpaca market closed
+→ Alpaca trading hours: 9h30-16h00 EST (lun-ven)
 
-**⚠️ IMPORTANT** : Port 4002 = IB Gateway Paper Trading (préféré 24/7)
+### Error: Insufficient buying power
+→ Vérifier capital disponible dans Alpaca dashboard
 
-**Setup initial** :
-```bash
-cp .env.example .env
-nano .env  # Remplir TOKEN et CHAT_ID
-```
+### Bot ne démarre pas
+→ Vérifier logs : `tail -f logs/bot.log`
 
 ---
 
-## 📊 REPORTING & ANALYSE (Nouveau - 13 fév 2026)
+## 📋 HISTORIQUE SESSION 14 FÉV 2026
 
-### Notification de démarrage
-- ✅ Message Telegram automatique au lancement du bot
-- Format : "🚀 Bot démarré le YYYY-MM-DD HH:MM:SS"
+**Migration complète vers Alpaca** :
+- ✅ Supprimé tout le code IBKR
+- ✅ Créé nouveau client Alpaca (`src/alpaca_client.py`)
+- ✅ Migré tous les scripts de trading vers Alpaca
+- ✅ Mis à jour requirements.txt (`alpaca-trade-api` au lieu d'`ib_insync`)
+- ✅ Mis à jour .env et documentation
+- ✅ Nettoyé CONVERSATION_CONTEXT.md (supprimé infos sensibles)
+- ✅ Déployé sur GitHub
+- ✅ Déployé sur serveur
 
-### Rapport quotidien (22h automatique)
-- ✅ Envoi auto chaque jour à 22h via `runner_5m.py`
-- ✅ Contenu : capital, activité du jour, positions ouvertes
-- ✅ Métriques 30j : Sharpe ratio, max drawdown
-- ✅ Win rate et P&L si stops remplis
-- Script : `daily_report.py` (appelé automatiquement)
+**Raison migration** :
+- IBKR : problèmes de déploiement serveur (dialogue bloquant non résolu)
+- Alpaca : setup simple, API stable, paper trading gratuit, $0 commission
 
-### Historique de performance
-- ✅ **`performance_log.csv`** : sauvegarde quotidienne automatique
-- Colonnes : date, net_liquidation, available_funds, signals, entries, stops_filled, open_positions, win_rate_pct, pnl_usd
-- **Jamais écrasé** : append only (ajout chaque jour)
-- Protégé par `.gitignore` (reste local)
-
-### Analyse et optimisation
-- ✅ Script `analyze_performance.py` pour analyse détaillée
-- Métriques calculées : Sharpe ratio, max drawdown, win rate moyen
-- Recommandations automatiques selon les performances
-- Usage : `python3 analyze_performance.py [--days 30]`
-
-### Fonctions d'analyse (infra/summary.py)
-- `calculate_win_rate()` : % de trades gagnants
-- `calculate_pnl()` : Profit & Loss total
-- `calculate_sharpe_ratio()` : Rendement ajusté du risque (annualisé)
-- `calculate_max_drawdown()` : Perte max depuis le pic (%)
-- `save_daily_performance()` : Sauvegarde auto dans performance_log.csv
-- `load_performance_history()` : Charge historique pour analyse
-
-### Fichiers locaux (pas sur GitHub)
-- `trades_log.csv` → Tous les trades (détail par ticker)
-- `performance_log.csv` → Résumé quotidien (pour analyse stratégique)
-- `logs/bot.log` → Logs d'exécution
+**Limitations acceptées** :
+- Alpaca : US markets uniquement (pas EU/crypto)
+- Tickers ajustés en conséquence
 
 ---
 
-## 📌 NOTES POUR PROCHAINE SESSION
-
-### ⚠️ EN COURS : Déploiement sur Hetzner Cloud (13 fév 2026)
-
-**STATUS** : Bot presque fonctionnel, 1 problème restant à résoudre
-
-#### ✅ Ce qui fonctionne :
-- Serveur Hetzner CX21 créé et configuré (Ubuntu 22.04)
-- Utilisateur `trader` créé avec accès SSH
-- Python 3, Java 11, Xvfb, IBC installés
-- IB Gateway 10.37 (version 1037) installé et démarrant correctement
-- Repository cloné (rendu public pour simplifier)
-- Environnement Python (venv) créé avec toutes les dépendances
-- Fichier `.env` configuré avec TOKEN/CHAT_ID Telegram
-- Fichier `~/ibc/config.ini` configuré avec identifiants IBKR
-- Xvfb tourne (serveur X virtuel)
-- IB Gateway démarre via IBC (processus Java actif)
-- **Connexion Telegram : OK ✅**
-- **Connexion IBKR : OK ✅**
-
-#### ⚠️ Problème restant : API Read-Only Mode
-
-**Symptôme** :
-```
-Error 321: The API interface is currently in Read-Only mode
-```
-
-**Impact** :
-- ✅ Bot peut se connecter à IBKR
-- ✅ Bot peut lire les données (prix, positions)
-- ❌ Bot ne peut PAS passer d'ordres automatiquement
-
-**Tentatives effectuées** :
-1. ✅ Ajouté `ReadOnlyApi=no` dans `~/ibc/config.ini`
-2. ✅ Ajouté `ReadOnly=false` dans `~/Jts/jts.ini`
-3. ✅ Redémarré Gateway plusieurs fois
-4. ⚠️ Paramètre persiste → **Probablement configuré côté serveur IBKR**
-
-**Solution à tester demain** :
-1. Se connecter sur https://www.interactivebrokers.com/sso/Login
-2. Aller dans Settings → API → Settings
-3. Désactiver "Read-Only API"
-4. Sauvegarder et redémarrer Gateway
-
-#### 📋 Commandes utiles pour reprendre
-
-**Sur le serveur Hetzner (SSH)** :
-```bash
-# Se connecter
-ssh trader@VOTRE_IP_HETZNER
-
-# Vérifier que Gateway tourne
-ps aux | grep java | grep ibgateway
-netstat -tuln | grep 4002
-
-# Si Gateway ne tourne pas, le démarrer :
-export DISPLAY=:1
-Xvfb :1 -screen 0 1024x768x24 &
-sleep 3
-cd ~/ibc
-export IBC_INI=/home/trader/ibc/config.ini IBC_PATH=/home/trader/ibc TWS_PATH=/home/trader/Jts LOG_PATH=/home/trader/ibc/logs APP=GATEWAY TWS_MAJOR_VRSN=1037
-./scripts/displaybannerandlaunch.sh &
-
-# Attendre 1 minute puis tester
-cd ~/labase-trading-alerts
-source venv/bin/activate
-python3 src/main.py
-```
-
-**Fichiers importants** :
-- `~/ibc/config.ini` : Config IBC (identifiants IBKR)
-- `~/Jts/jts.ini` : Config Gateway
-- `~/labase-trading-alerts/.env` : Config bot (TOKEN/CHAT_ID)
-- `~/ibc/logs/ibc-3.19.0_GATEWAY-1037_Friday.txt` : Logs IBC
-- `~/Jts/ibgateway/1037/logs/` : Logs Gateway
-
-#### 🎯 Prochaines étapes (après résolution Read-Only)
-
-1. Résoudre Read-Only API (portail web IBKR)
-2. Tester `python3 src/main.py` → doit être OK sans erreur 321
-3. Lancer le bot : `./scripts/start.sh`
-4. Vérifier status : `./scripts/status.sh`
-5. Installer cron jobs : `./scripts/install_cron.sh`
-6. Optionnel : Installer services systemd pour auto-restart
-
----
-
-### 📊 Architecture finale (une fois terminé)
-
-```
-Serveur Hetzner Cloud (CX21 - ~5€/mois)
-├── Xvfb (serveur X virtuel :1)
-├── IB Gateway 1037
-│   ├── Se connecte à IBKR Paper Trading
-│   └── API ouverte sur 127.0.0.1:4002
-├── Bot Python (runner_5m.py)
-│   ├── Analyse 38 tickers toutes les 5 min
-│   ├── Détecte breakouts
-│   ├── Passe ordres via API IBKR
-│   └── Envoie alertes Telegram
-├── Watchdog (cron 1h)
-├── Heartbeat (cron 9h)
-└── Rotation logs (cron minuit)
-```
-
----
-
-## 📋 HISTORIQUE SESSION 13 FÉV 2026 (Déploiement Hetzner)
-
-- ✅ Création documentation complète (DEPLOYMENT.md, QUICKSTART.md, SECURITY.md)
-- ✅ Scripts de déploiement automatisé créés
-- ✅ Configuration IBC et systemd
-- ✅ Repository rendu public
-- ✅ Serveur Hetzner créé et configuré
-- ✅ Toutes les dépendances installées
-- ✅ IB Gateway installé et fonctionnel
-- ✅ Bot se connecte à IBKR et Telegram
-- ⚠️ Reste à résoudre : API Read-Only (config compte IBKR)
-
-**Durée totale déploiement** : ~3-4 heures (dont debugging IBC/Gateway)
-
----
-
-## 📌 NOTES SESSION PRÉCÉDENTE (MacBook local)
-
-- ✅ Système complet et prêt pour production (13 fév 2026)
-- ✅ 38 tickers d'origine réintégrés (test en live)
-- ✅ Reporting quotidien automatisé (22h)
-- ✅ Système de surveillance actif (watchdog + heartbeat + rotation)
-- ✅ Historique de performance sauvegardé
-- ✅ Outils d'analyse prêts pour optimisation
-- ✅ Configuration via .env (portabilité)
-- ✅ Scripts de synchronisation pour analyse sur Codespaces
-- ✅ **Guide de déploiement Hetzner Cloud créé** (13 fév 2026)
-- ⚠️  **IMPORTANT** : Fichiers de performance en local uniquement (voir section ci-dessous)
-
----
-
-## ☁️ DÉPLOIEMENT HETZNER CLOUD (Nouveau - 13 fév 2026)
-
-### Documentation créée
-- ✅ **QUICKSTART.md** : Déploiement rapide en 15 minutes
-- ✅ **DEPLOYMENT.md** : Guide complet étape par étape
-- ✅ **SECURITY.md** : Bonnes pratiques de sécurité
-
-### Scripts de déploiement
-- ✅ `scripts/setup_server.sh` : Installation automatique dépendances serveur
-- ✅ `scripts/deploy_bot.sh` : Déploiement complet automatisé
-- ✅ `scripts/start_ibgateway.sh` : Démarrage IB Gateway headless (Xvfb + IBC)
-- ✅ `scripts/stop_ibgateway.sh` : Arrêt propre IB Gateway
-- ✅ `scripts/install_systemd_services.sh` : Installation services système
-
-### Configuration IBC/systemd
-- ✅ `config/ibc_config_template.ini` : Template configuration IBC
-- ✅ `config/ibgateway.service` : Service systemd IB Gateway
-- ✅ `config/trading-bot.service` : Service systemd trading bot
-
-### Workflow de migration MacBook → Hetzner
-1. Créer serveur CX21 sur console.hetzner.com (~5€/mois)
-2. Lancer `setup_server.sh` (install Python, Java, Xvfb, IBC)
-3. Installer IB Gateway + configurer IBC avec identifiants IBKR
-4. Lancer `deploy_bot.sh` (clone repo + install + start)
-5. Installer services systemd pour redémarrage auto
-
-### Avantages serveur cloud vs MacBook local
-- ✅ Disponibilité 24/7 garantie (pas de mise en veille)
-- ✅ Connexion internet stable
-- ✅ Pas de dépendance matérielle personnelle
-- ✅ Sauvegarde/snapshot facile
-- ✅ Coût prévisible (~5€/mois)
-- ✅ Redémarrage auto en cas de panne (systemd)
-
-### Sécurité renforcée
-- ✅ Firewall UFW configuré
-- ✅ SSH par clé uniquement (pas de mot de passe)
-- ✅ Fail2ban contre brute force
-- ✅ Port API (4002) non exposé publiquement
-- ✅ Fichiers sensibles protégés (chmod 600)
-- ✅ Mises à jour automatiques système
-
-### Prochaine étape si migration vers Hetzner
-1. Lire QUICKSTART.md pour vue d'ensemble
-2. Suivre DEPLOYMENT.md étape par étape
-3. Vérifier SECURITY.md pour durcissement serveur
-4. Tester en paper trading d'abord
-5. Surveiller logs et Telegram quotidiennement
-
----
-
-**Prochaine fois** : Relire ce fichier au démarrage Codespace !
-
-**Checklist avant lancement 14 jours** :
-1. `git pull` → Récupérer derniers changements
-2. `pip3 install -r requirements.txt` → Fix urllib3 si nécessaire
-3. MacBook : réglages énergie (jamais mettre en veille)
-4. IB Gateway : lancer et vérifier connexion port 4002
-5. Vérifier `.env` avec TOKEN et CHAT_ID corrects
-6. Test connexion : `python3 src/main.py` (doit afficher OK)
-7. Installer cron jobs : `./scripts/install_cron.sh` puis `crontab -l` pour vérifier
-8. Lancer bot : `./scripts/start.sh`
-9. Vérifier status : `./scripts/status.sh`
-10. Observer premier cycle : `tail -f logs/bot.log`
-
----
-
-## 🔄 SYNCHRONISATION FICHIERS LOCAL ↔ CODESPACES
-
-### Problématique
-- Bot tourne en **local** (MacBook) → fichiers générés localement
-- Analyse sur **Codespaces** → fichiers absents
-- `.gitignore` bloque `trades_log.csv` et `performance_log.csv` (pour sécurité)
-
-### Solutions envisagées (13 fév 2026)
-1. **Upload manuel** : Copier fichiers vers Codespaces quand besoin d'analyse
-2. **Script de backup** : Auto-upload vers GitHub (dossier backups/) ou cloud storage
-3. **Analyse locale** : Utiliser `analyze_performance.py` directement sur MacBook
-
-**Décision prise** : Scripts de synchronisation créés (`sync_logs.py` et `analyze_synced.py`)
-
----
-
-*Last tested: 13 fév 2026 → Système complet : notifications, reporting, surveillance, analyse ✅  
-Prêt pour lancement 14 jours de trading automatisé 🚀*
+*Last tested: 14 fév 2026 → Migration Alpaca complète ✅  
+Prêt pour lancement 24/7 sur serveur 🚀*

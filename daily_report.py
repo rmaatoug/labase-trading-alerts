@@ -5,7 +5,7 @@ Lance ce script en fin de journée (ex: 22h via cron)
 Sauvegarde aussi les performances dans performance_log.csv
 """
 
-from ib_insync import IB
+from src.alpaca_client import connect_alpaca
 import csv
 import os
 from datetime import datetime, timezone, date
@@ -26,9 +26,6 @@ logger = setup_logger("logs/bot.log")
 
 # Configuration
 LOG_FILE = "trades_log.csv"
-CLIENT_ID = int(os.getenv('IBKR_CLIENT_ID', '9'))  # Différent des autres scripts
-IB_HOST = os.getenv('IBKR_HOST', '127.0.0.1')
-IB_PORT = int(os.getenv('IBKR_PORT', '7497'))
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
@@ -53,30 +50,25 @@ def read_today_trades():
 
 
 def get_account_info():
-    """Récupère les infos du compte IBKR"""
-    ib = IB()
+    """Récupère les infos du compte Alpaca"""
     try:
-        ib.connect(IB_HOST, IB_PORT, clientId=CLIENT_ID)
+        alpaca = connect_alpaca()
         
-        # Capital
-        net_liq = 0
-        available = 0
-        for item in ib.accountSummary():
-            if item.tag == "NetLiquidation" and item.currency == "USD":
-                net_liq = float(item.value)
-            if item.tag == "AvailableFunds" and item.currency == "USD":
-                available = float(item.value)
+        # Account info
+        account = alpaca.get_account()
+        net_liq = float(account.equity) if account else 0
+        available = float(account.cash) if account else 0
         
         # Positions ouvertes
-        positions = ib.positions()
-        open_positions = [(p.contract.symbol, int(p.position), round(p.avgCost, 2)) 
-                          for p in positions if p.position != 0]
+        positions = alpaca.get_positions()
+        open_positions = [(p.symbol, int(float(p.qty)), round(float(p.avg_entry_price), 2)) 
+                          for p in positions]
         
-        ib.disconnect()
+        alpaca.disconnect()
         return net_liq, available, open_positions
     
     except Exception as e:
-        logger.error(f"Failed to get IBKR account info: {e}")
+        logger.error(f"Failed to get Alpaca account info: {e}")
         return 0, 0, []
 
 

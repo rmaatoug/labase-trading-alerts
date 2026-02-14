@@ -1,13 +1,15 @@
-from ib_insync import *
+from src.alpaca_client import connect_alpaca
 
-ib = IB()
-ib.connect('127.0.0.1', 7497, clientId=3)
+alpaca = connect_alpaca()
 
-contract = Stock('AAPL', 'SMART', 'USD')
-ticker = ib.reqMktData(contract, '', False, False)
+# Get recent bars to check price
+bars = alpaca.get_historical_bars('AAPL', days=1, timeframe='1Min')
 
-ib.sleep(2)
-print("AAPL bid/ask/last:", ticker.bid, ticker.ask, ticker.last)
+if bars:
+    last_bar = bars[-1]
+    print(f"AAPL last price: {last_bar.close} (time: {last_bar.date})")
+    print(f"High: {last_bar.high}, Low: {last_bar.low}, Volume: {last_bar.volume}")
+else:
+    print("No price data available")
 
-ib.cancelMktData(contract)
-ib.disconnect()
+alpaca.disconnect()

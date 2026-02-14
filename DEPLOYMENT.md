@@ -363,16 +363,79 @@ git push
 
 ## Troubleshooting
 
-### Problème 1 : IB Gateway ne se connecte pas
+### Problème 1 : Error 321 - API Read-Only Mode ⚠️
+**Symptôme** : `Error 321: The API interface is currently in Read-Only mode`
+
+Ce problème empêche le bot de passer des ordres (lecture seule).
+
+**Solutions (dans l'ordre)** :
+
+1. **Vérifier le fichier IBC config.ini**
+   ```bash
+   grep -i readonlyapi ~/ibc/config.ini
+   ```
+   Doit contenir : `ReadOnlyApi=no`
+   
+   Si absent, ajouter la ligne :
+   ```bash
+   echo "ReadOnlyApi=no" >> ~/ibc/config.ini
+   ```
+
+2. **Vérifier le fichier jts.ini du Gateway**
+   ```bash
+   # Trouver le fichier jts.ini
+   find ~/Jts -name "jts.ini" -type f
+   
+   # Éditer chaque fichier trouvé
+   nano ~/Jts/jts.ini
+   ```
+   
+   Sous la section `[API]`, ajouter ou modifier :
+   ```ini
+   [API]
+   ReadOnly=false
+   ```
+
+3. **Redémarrer IB Gateway**
+   ```bash
+   ./scripts/stop_ibgateway.sh
+   sleep 5
+   ./scripts/start_ibgateway.sh
+   ```
+
+4. **Si le problème persiste → Configuration compte IBKR**
+   
+   Le paramètre Read-Only peut être configuré côté serveur IBKR :
+   
+   - Connectez-vous sur https://www.interactivebrokers.com/sso/Login
+   - Allez dans **Settings** → **API** → **Settings**
+   - Cherchez l'option **"Read-Only API"** ou **"API Settings"**
+   - Décochez **"Enable Read-Only Mode"** si présent
+   - **Sauvegardez** et attendez 5-10 minutes
+   - Redémarrez IB Gateway
+
+5. **Vérifier avec test de connexion**
+   ```bash
+   cd ~/labase-trading-alerts
+   source venv/bin/activate
+   python3 src/main.py
+   ```
+   
+   Si vous voyez toujours l'erreur 321, attendez quelques minutes après la modification du portail IBKR.
+
+**Note** : Le mode Read-Only est souvent activé par défaut pour des raisons de sécurité. Il faut explicitement le désactiver dans les 3 endroits : config.ini, jts.ini, et potentiellement le portail web IBKR.
+
+---
+
+### Problème 2 : IB Gateway ne se connecte pas
 **Symptôme** : `API error 504: Not connected`
 
 **Solutions** :
 1. Vérifier que IB Gateway tourne : `ps aux | grep gateway`
 2. Redémarrer IB Gateway : `pkill -f gateway && ./start_ibgateway.sh`
 3. Vérifier port 4002 ouvert : `netstat -tuln | grep 4002`
-4. Vérifier config IBKR : API Settings → Read-Only désactivé
 
-### Problème 2 : Bot ne démarre pas
+### Problème 3 : Bot ne démarre pas
 **Symptôme** : `runner_5m.py` crash immédiatement
 
 **Solutions** :
@@ -381,7 +444,7 @@ git push
 3. Vérifier logs : `cat logs/bot.log`
 4. Permissions : `chmod +x scripts/*.sh`
 
-### Problème 3 : Pas de notifications Telegram
+### Problème 4 : Pas de notifications Telegram
 **Symptôme** : Bot tourne mais pas de messages
 
 **Solutions** :
@@ -389,12 +452,12 @@ git push
 2. Vérifier TOKEN/CHAT_ID dans `.env`
 3. Vérifier que bot Telegram est démarré (envoyer `/start` au bot)
 
-### Problème 4 : "Order quantity too large"
+### Problème 5 : "Order quantity too large"
 **Symptôme** : Rejets IBKR pour qty > 500
 
 **Solution** : Déjà fixé dans `trade_breakout_paper.py` (ligne ~130) avec `min(qty, 500)`
 
-### Problème 5 : Serveur manque de RAM
+### Problème 6 : Serveur manque de RAM
 **Symptôme** : Processus tués (OOM killer)
 
 **Solutions** :

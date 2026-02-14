@@ -1,11 +1,15 @@
-from ib_insync import *
+from src.alpaca_client import connect_alpaca
 
-ib = IB()
-ib.connect('127.0.0.1', 7497, clientId=2)
+alpaca = connect_alpaca()
 
-summary = ib.accountSummary()
-for row in summary:
-    if row.tag in ("NetLiquidation", "AvailableFunds", "Currency"):
-        print(row.tag, row.value, row.currency)
+account = alpaca.get_account()
 
-ib.disconnect()
+if account:
+    print(f"Equity: ${account.equity}")
+    print(f"Cash: ${account.cash}")
+    print(f"Buying Power: ${account.buying_power}")
+    print(f"Portfolio Value: ${account.portfolio_value}")
+else:
+    print("Failed to fetch account info")
+
+alpaca.disconnect()

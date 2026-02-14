@@ -1,4 +1,4 @@
-from ib_insync import *
+from src.alpaca_client import connect_alpaca
 import math
 
 SYMBOL = "AAPL"
@@ -6,21 +6,9 @@ N = 12                 # 12 bougies de 5m = 60 minutes
 RISK_EUR = 200.0       # risque max par trade
 FX_USD_EUR = 0.92      # approx (on fera mieux après)
 
-ib = IB()
-ib.connect("127.0.0.1", 7497, clientId=7)
+alpaca = connect_alpaca()
 
-contract = Stock(SYMBOL, "SMART", "USD")
-ib.qualifyContracts(contract)
-
-bars = ib.reqHistoricalData(
-    contract,
-    endDateTime="",
-    durationStr="2 D",
-    barSizeSetting="5 mins",
-    whatToShow="TRADES",
-    useRTH=True,
-    formatDate=1
-)
+bars = alpaca.get_historical_bars(SYMBOL, days=2, timeframe='5Min')
 
 if len(bars) < N + 1:
     raise SystemExit(f"Pas assez de données: {len(bars)} bars")
