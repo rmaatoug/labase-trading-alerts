@@ -4,12 +4,7 @@ Replaces IBKR client with Alpaca API.
 """
 
 import os
-from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest, StopLossRequest, LimitOrderRequest
-from alpaca.trading.enums import OrderSide, TimeInForce, OrderType
-from alpaca.data.historical import StockHistoricalDataClient
-from alpaca.data.requests import StockBarsRequest
-from alpaca.data.timeframe import TimeFrame
+import alpaca_trade_api as tradeapi
 from datetime import datetime, timedelta
 import pandas as pd
 
@@ -25,17 +20,12 @@ class AlpacaClient:
         if not self.api_key or not self.secret_key:
             raise ValueError("ALPACA_API_KEY and ALPACA_SECRET_KEY must be set in .env")
         
-        # Trading client (for orders, positions, account)
-        self.trading_client = TradingClient(
-            api_key=self.api_key,
+        # Create REST API client
+        self.api = tradeapi.REST(
+            key_id=self.api_key,
             secret_key=self.secret_key,
-            paper=True if 'paper' in self.base_url else False
-        )
-        
-        # Data client (for historical data)
-        self.data_client = StockHistoricalDataClient(
-            api_key=self.api_key,
-            secret_key=self.secret_key
+            base_url=self.base_url,
+            api_version='v2'
         )
         
         self.connected = False
@@ -43,7 +33,7 @@ class AlpacaClient:
     def connect(self):
         """Test connection to Alpaca API"""
         try:
-            account = self.trading_client.get_account()
+            account = self.api.get_account()
             self.connected = True
             return True
         except Exception as e:
@@ -70,43 +60,34 @@ class AlpacaClient:
             end = datetime.now()
             start = end - timedelta(days=days)
             
-            # Map timeframe string to TimeFrame enum
-            timeframe_map = {
-                '1Min': TimeFrame.Minute,
-                '5Min': TimeFrame(5, 'Min'),
-                '15Min': TimeFrame(15, 'Min'),
-                '1Hour': TimeFrame.Hour,
-                '1Day': TimeFrame.Day
-            }
+            # Format timestamps for API
+            start_str = start.strftime('%Y-%m-%d')
+            end_str = end.strftime('%Y-%m-%d')
             
-            tf = timeframe_map.get(timeframe, TimeFrame(5, 'Min'))
+            # Get bars using Alpaca API
+            bars_df = self.api.get_bars(
+                symbol,
+                timeframe,
+                start=start_str,
+                end=end_str,
+                limit=10000
+            ).df
             
-            request_params = StockBarsRequest(
-                symbol_or_symbols=symbol,
-                timeframe=tf,
-                start=start,
-                end=end
-            )
-            
-            bars_data = self.data_client.get_stock_bars(request_params)
-            
-            if symbol not in bars_data:
+            if bars_df.empty:
                 return []
             
-            bars = bars_data[symbol]
-            
-            # Convert to simple objects similar to ib_insync format
+            # Convert DataFrame to list of bar objects
             result = []
-            for bar in bars:
+            for idx, row in bars_df.iterrows():
                 class Bar:
                     pass
                 b = Bar()
-                b.date = bar.timestamp
-                b.open = float(bar.open)
-                b.high = float(bar.high)
-                b.low = float(bar.low)
-                b.close = float(bar.close)
-                b.volume = int(bar.volume)
+                b.date = idx
+                b.open = float(row['open'])
+                b.high = float(row['high'])
+                b.low = float(row['low'])
+                b.close = float(row['close'])
+                b.volume = int(row['volume'])
                 result.append(b)
             
             return result
@@ -123,7 +104,7 @@ class AlpacaClient:
             list of position objects with: symbol, qty, avg_entry_price
         """
         try:
-            positions = self.trading_client.get_all_positions()
+            positions = self.api.list_positions()
             
             # Convert to simple format
             result = []
@@ -148,7 +129,7 @@ class AlpacaClient:
     def get_account(self):
         """Get account information"""
         try:
-            account = self.trading_client.get_account()
+            account = self.api.get_account()
             
             class Account:
                 pass
@@ -177,14 +158,13 @@ class AlpacaClient:
             order object with status
         """
         try:
-            market_order_data = MarketOrderRequest(
+            order = self.api.submit_order(
                 symbol=symbol,
                 qty=qty,
-                side=OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL,
-                time_in_force=TimeInForce.DAY
+                side=side,
+                type='market',
+                time_in_force='day'
             )
-            
-            order = self.trading_client.submit_order(order_data=market_order_data)
             
             # Convert to simple format
             class Order:
@@ -217,18 +197,14 @@ class AlpacaClient:
             order object with status
         """
         try:
-            # Use stop loss request for protective stops
-            from alpaca.trading.requests import StopOrderRequest
-            
-            stop_order_data = StopOrderRequest(
+            order = self.api.submit_order(
                 symbol=symbol,
                 qty=qty,
-                side=OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL,
-                time_in_force=TimeInForce.GTC,  # Good till cancelled
+                side=side,
+                type='stop',
+                time_in_force='gtc',  # Good till cancelled
                 stop_price=stop_price
             )
-            
-            order = self.trading_client.submit_order(order_data=stop_order_data)
             
             # Convert to simple format
             class Order:
@@ -259,20 +235,7 @@ class AlpacaClient:
             list of order objects
         """
         try:
-            from alpaca.trading.requests import GetOrdersRequest
-            from alpaca.trading.enums import QueryOrderStatus
-            
-            status_map = {
-                'open': QueryOrderStatus.OPEN,
-                'closed': QueryOrderStatus.CLOSED,
-                'all': QueryOrderStatus.ALL
-            }
-            
-            request = GetOrdersRequest(
-                status=status_map.get(status, QueryOrderStatus.OPEN)
-            )
-            
-            orders = self.trading_client.get_orders(filter=request)
+            orders = self.api.list_orders(status=status)
             
             # Convert to simple format
             result = []
@@ -301,7 +264,7 @@ class AlpacaClient:
     def cancel_order(self, order_id):
         """Cancel an order by ID"""
         try:
-            self.trading_client.cancel_order_by_id(order_id)
+            self.api.cancel_order(order_id)
             return True
         except Exception as e:
             print(f"Error cancelling order {order_id}: {e}")
@@ -316,3 +279,4 @@ def connect_alpaca():
         return client
     else:
         raise ConnectionError("Failed to connect to Alpaca API")
+
