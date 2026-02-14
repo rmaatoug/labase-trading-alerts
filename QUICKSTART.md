@@ -1,135 +1,206 @@
-# ⚡ Quick Start - Hetzner Cloud
+# Quickstart — Déploiement Alpaca Trading Bot
 
-Guide condensé pour déployer rapidement le bot sur Hetzner Cloud.
+Guide rapide pour déployer le bot sur un serveur Ubuntu/Debian en **15 minutes**.
 
-## 📋 Checklist pré-déploiement
+## Prérequis
 
-Sur votre MacBook, préparez :
-- [ ] Clé SSH générée : `cat ~/.ssh/id_ed25519.pub`
-- [ ] Fichier `.env` avec TOKEN et CHAT_ID
-- [ ] Username et password IBKR (paper trading)
+1. **Serveur Ubuntu/Debian** (local, VPS, Hetzner, AWS, etc.)
+2. **Compte Alpaca** (gratuit) : https://alpaca.markets
+3. **Bot Telegram** : parler à @BotFather sur Telegram
 
-## 🚀 Déploiement en 10 minutes
+## Étape 1 : Créer compte Alpaca (5 min)
 
-### 1️⃣ Créer serveur Hetzner (3 min)
-```
-→ https://console.hetzner.com
-→ Nouveau serveur CX21 
-→ Ubuntu 22.04
-→ Ajouter votre clé SSH
-→ Créer
-→ Noter l'IP : 95.217.X.X
-```
+1. Aller sur https://alpaca.markets
+2. Créer un compte (gratuit, pas de CB requise pour paper trading)
+3. Activer le 2FA (ne bloque pas l'API)
+4. Aller dans **Account** → **Paper Trading** → **API Keys**
+5. Générer une paire de clés :
+   - `API Key ID` (commence par PK...)
+   - `Secret Key` (à sauvegarder immédiatement)
 
-### 2️⃣ Configuration initiale (2 min)
+## Étape 2 : Créer bot Telegram (2 min)
+
+1. Ouvrir Telegram et parler à @BotFather
+2. Envoyer `/newbot` et suivre les instructions
+3. Récupérer le **token** (ex: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
+4. Chercher @userinfobot et récupérer votre **Chat ID** (ex: `987654321`)
+
+## Étape 3 : Déployer sur serveur (8 min)
+
+### SSH dans votre serveur
+
 ```bash
-# Depuis votre MacBook
-ssh root@VOTRE_IP
-
-# Créer utilisateur
-adduser trader
-usermod -aG sudo trader
-mkdir -p /home/trader/.ssh
-cp ~/.ssh/authorized_keys /home/trader/.ssh/
-chown -R trader:trader /home/trader/.ssh
-exit
-
-# Se reconnecter
-ssh trader@VOTRE_IP
+ssh user@votre-serveur-ip
 ```
 
-### 3️⃣ Installation automatique (5 min)
+### Déploiement automatique
+
 ```bash
-# Télécharger et lancer setup
-curl -sL https://raw.githubusercontent.com/rmaatoug/labase-trading-alerts/main/scripts/setup_server.sh | bash
-
-# Installer IB Gateway
-cd ~/ibgateway
-wget https://download2.interactivebrokers.com/installers/ibgateway/stable-standalone/ibgateway-stable-standalone-linux-x64.sh
-chmod +x ibgateway-stable-standalone-linux-x64.sh
-./ibgateway-stable-standalone-linux-x64.sh -q  # Installation silencieuse
-
-# Configurer IBC
+# Clone du repo
+cd ~
 git clone https://github.com/rmaatoug/labase-trading-alerts.git
-cp ~/labase-trading-alerts/config/ibc_config_template.ini ~/ibc/config.ini
-nano ~/ibc/config.ini  # Remplir IbLoginId et IbPassword
-chmod 600 ~/ibc/config.ini
-```
+cd labase-trading-alerts
 
-### 4️⃣ Déploiement du bot (2 min)
-```bash
-cd ~/labase-trading-alerts
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Configurer .env
-nano .env  # Coller TOKEN et CHAT_ID
-```
-
-### 5️⃣ Démarrage (1 min)
-```bash
-# Démarrer IB Gateway
-cd ~/labase-trading-alerts
+# Rendre les scripts exécutables
 chmod +x scripts/*.sh
-./scripts/start_ibgateway.sh
 
-# Attendre 1 minute que Gateway soit prêt
-
-# Démarrer le bot
-./scripts/start.sh
-
-# Vérifier
-./scripts/status.sh
-tail -f logs/bot.log
+# Lancer le déploiement automatique
+./scripts/deploy_bot.sh
 ```
 
-## ✅ Vérification finale
+Le script va :
+- Installer Python 3 et dépendances
+- Créer environnement virtuel
+- Installer les packages Python
+- Créer les dossiers nécessaires
 
-Vous devez recevoir sur Telegram :
-- ✅ Message "🚀 Bot démarré"
-- ✅ Message "✅ BONJOUR" le lendemain à 9h
-- ✅ Alertes de signaux/trades
+### Configuration des clés API
 
-## 🆘 Problèmes courants
-
-### Gateway ne démarre pas
 ```bash
-# Vérifier logs
-tail -f ~/ibc/logs/ibc.log
+# Copier le template
+cp .env.example .env
 
-# Redémarrer
-./scripts/stop_ibgateway.sh
-./scripts/start_ibgateway.sh
+# Éditer avec vos vraies clés
+nano .env
 ```
 
-### Bot ne se connecte pas à IBKR
+Remplir :
 ```bash
-# Vérifier que Gateway tourne
-ps aux | grep ibgateway
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_CHAT_ID=987654321
 
-# Vérifier API port
-netstat -tuln | grep 4002
+ALPACA_API_KEY=PKXXXXXXXXXXXXXXXXXXX
+ALPACA_SECRET_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ALPACA_BASE_URL=https://paper-api.alpaca.markets
+```
 
-# Tester connexion
+Sauvegarder : `Ctrl+O`, `Enter`, `Ctrl+X`
+
+### Test de connectivité
+
+```bash
+source venv/bin/activate
 python3 src/main.py
 ```
 
-### Pas de notifications Telegram
-```bash
-# Vérifier .env
-cat .env
-
-# Tester Telegram
-python3 -c "from src.telegram_client import send_telegram; send_telegram('Test')"
+Vous devriez voir :
+```
+Telegram: OK
+Alpaca connected: True
+Account equity: $100000.00
+Buying power: $100000.00
 ```
 
-## 📖 Documentation complète
+Et recevoir un message Telegram !
 
-→ [DEPLOYMENT.md](DEPLOYMENT.md) pour le guide détaillé
+### Lancer le bot
+
+```bash
+./scripts/start.sh
+```
+
+### Installer la surveillance automatique
+
+```bash
+./scripts/install_cron.sh
+```
+
+Cron jobs installés :
+- **Watchdog (1h)** : Redémarre le bot s'il plante
+- **Heartbeat (9h)** : Message quotidien de statut
+- **Rapport (22h)** : Statistiques du jour
+- **Rotation logs (0h)** : Nettoyage automatique
+
+## Commandes utiles
+
+```bash
+# Vérifier le statut
+./scripts/status.sh
+
+# Voir les logs en temps réel
+tail -f logs/bot.log
+
+# Arrêter le bot
+./scripts/stop.sh
+
+# Redémarrer le bot
+./scripts/stop.sh && ./scripts/start.sh
+
+# Voir les trades
+cat trades_log.csv
+
+# Vérifier les cron jobs
+crontab -l
+```
+
+## Architecture finale
+
+```
+Serveur Ubuntu/Debian
+├── Python 3 + virtualenv
+├── Bot Python (runner_5m.py)
+│   ├── Analyse 29 tickers US toutes les 5 min
+│   ├── Détecte breakouts
+│   ├── Passe ordres via Alpaca API
+│   └── Envoie alertes Telegram
+├── Watchdog (cron 1h) → Redémarrage auto
+├── Heartbeat (cron 9h) → Notification quotidienne
+└── Rapport (cron 22h) → Statistiques du jour
+```
+
+## Troubleshooting
+
+### Bot ne démarre pas
+
+```bash
+# Vérifier les logs
+cat logs/runner.log
+tail -20 logs/bot.log
+
+# Tester manuellement
+source venv/bin/activate
+python3 src/main.py
+```
+
+### Erreur Alpaca authentication
+
+Vérifier que dans `.env` :
+- `ALPACA_API_KEY` commence par `PK` (paper) ou `AK` (live)
+- `ALPACA_SECRET_KEY` est correct
+- `ALPACA_BASE_URL=https://paper-api.alpaca.markets`
+
+### Pas de notification Telegram
+
+Vérifier que dans `.env` :
+- `TELEGRAM_BOT_TOKEN` est correct
+- `TELEGRAM_CHAT_ID` est votre ID (pas celui du bot)
+
+Tester :
+```bash
+curl -X POST "https://api.telegram.org/bot<TOKEN>/sendMessage" \
+  -d "chat_id=<CHAT_ID>&text=Test"
+```
+
+### Le bot ne trade pas
+
+- Vérifier horaires de marché US : 9h30-16h EST (lun-ven)
+- Vérifier logs : `tail -f logs/bot.log`
+- Vérifier tickers : `cat tickers.json` (uniquement US)
+
+## Sécurité
+
+- ✅ `.env` n'est jamais commité (dans .gitignore)
+- ✅ Clés API stockées localement uniquement
+- ✅ 2FA Alpaca ne bloque pas l'API
+- ⚠️ Ne jamais partager vos clés API
+- ⚠️ Utiliser paper trading avant live
+
+## Support
+
+- **Logs** : `logs/bot.log`, `logs/watchdog.log`, etc.
+- **Trades** : `trades_log.csv`
+- **GitHub** : https://github.com/rmaatoug/labase-trading-alerts
 
 ---
 
-**Temps total : ~15 minutes** ⏱️  
-**Coût mensuel : ~5€** 💶  
-**Disponibilité : 24/7** 🚀
+**C'est tout !** Votre bot tourne maintenant 24/7 sur Alpaca Paper Trading 🚀
