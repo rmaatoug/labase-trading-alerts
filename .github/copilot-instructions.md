@@ -31,7 +31,7 @@ Purpose: quick, actionable guidance so an AI assistant can be immediately produc
 
 - Testing & debugging tips:
   - There are no automated tests. Use `src/main.py` to test connectivity with Alpaca and Telegram before running strategies.
-  - Test with paper trading first: `ALPACA_BASE_URL=https://paper-api.alpaca.markets`
+  - Test with paper trading first: `ALPACA_BASE_URL=https://paper-api.alpaca.markets/v2`
   - Check account: `python account_check.py`
   - Check price: `python price_check.py`
 

@@ -71,7 +71,7 @@ TELEGRAM_CHAT_ID=987654321
 
 ALPACA_API_KEY=PKXXXXXXXXXXXXXXXXXXX
 ALPACA_SECRET_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-ALPACA_BASE_URL=https://paper-api.alpaca.markets
+ALPACA_BASE_URL=https://paper-api.alpaca.markets/v2
 ```
 
 Sauvegarder : `Ctrl+O`, `Enter`, `Ctrl+X`
@@ -167,7 +167,7 @@ python3 src/main.py
 Vérifier que dans `.env` :
 - `ALPACA_API_KEY` commence par `PK` (paper) ou `AK` (live)
 - `ALPACA_SECRET_KEY` est correct
-- `ALPACA_BASE_URL=https://paper-api.alpaca.markets`
+- `ALPACA_BASE_URL=https://paper-api.alpaca.markets/v2`
 
 ### Pas de notification Telegram
 

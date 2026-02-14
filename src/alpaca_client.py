@@ -15,7 +15,7 @@ class AlpacaClient:
     def __init__(self):
         self.api_key = os.getenv('ALPACA_API_KEY')
         self.secret_key = os.getenv('ALPACA_SECRET_KEY')
-        self.base_url = os.getenv('ALPACA_BASE_URL', 'https://paper-api.alpaca.markets')
+        self.base_url = os.getenv('ALPACA_BASE_URL', 'https://paper-api.alpaca.markets/v2')
         
         if not self.api_key or not self.secret_key:
             raise ValueError("ALPACA_API_KEY and ALPACA_SECRET_KEY must be set in .env")

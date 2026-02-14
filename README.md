@@ -27,7 +27,7 @@ nano .env  # Remplir avec vos vraies valeurs
 Variables requises dans `.env` :
  - `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID`
  - `ALPACA_API_KEY` et `ALPACA_SECRET_KEY` (depuis votre compte Alpaca)
- - `ALPACA_BASE_URL` (https://paper-api.alpaca.markets pour paper trading)
+ - `ALPACA_BASE_URL` (https://paper-api.alpaca.markets/v2 pour paper trading)
 
 ## Vérifier la connectivité (Telegram + Alpaca)
 ```bash

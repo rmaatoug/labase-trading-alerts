@@ -100,8 +100,14 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 
 ALPACA_API_KEY=your_alpaca_key_here
 ALPACA_SECRET_KEY=your_alpaca_secret_here
-ALPACA_BASE_URL=https://paper-api.alpaca.markets
+ALPACA_BASE_URL=https://paper-api.alpaca.markets/v2
 ```
+
+**⚠️ IMPORTANT** : 
+- Paper Trading URL: `https://paper-api.alpaca.markets/v2` (avec `/v2`)
+- Live Trading URL: `https://api.alpaca.markets/v2`
+- Les clés Paper commencent par `PK` (Paper Key)
+- Ne JAMAIS utiliser de clés Live avec l'URL Paper (erreur `unauthorized`)
 
 **Setup initial** :
 ```bash
