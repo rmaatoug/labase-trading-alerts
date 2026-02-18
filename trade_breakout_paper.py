@@ -1,5 +1,7 @@
+
 import csv
 import json
+import time
 
 # Chargement automatique des variables d'environnement
 from dotenv import load_dotenv
