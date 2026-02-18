@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from telegram_client import send_telegram
-from alpaca_client import connect_alpaca
+from src.alpaca_client import connect_alpaca
 
 
 def main():
