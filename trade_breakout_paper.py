@@ -118,6 +118,9 @@ def process_ticker(SYMBOL):
             risk_per_share_eur = risk_per_share_usd * FX_USD_EUR
             qty = math.floor(RISK_EUR / risk_per_share_eur)
 
+        # Flag pour savoir si on a loggé
+        did_log = False
+
         # --- action ---
         action = "NO_TRADE"
         order_status = ""
@@ -248,20 +251,25 @@ def process_ticker(SYMBOL):
         else:
             print(f"[{SYMBOL}] No trade.")
 
-        append_log({
-            "ts_utc": now,
-            "symbol": SYMBOL,
-            "bar_time": str(last.date),
-            "close": entry,
-            "hh": float(hh),
-            "ll": float(ll),
-            "signal": signal,
-            "qty": qty,
-            "stop": stop,
-            "action": action,
-            "buy_status": order_status,
-            "stop_status": stop_status
-        })
+        # On ne log que si last est bien défini (donc pas de return prématuré)
+        try:
+            append_log({
+                "ts_utc": now,
+                "symbol": SYMBOL,
+                "bar_time": str(last.date),
+                "close": entry,
+                "hh": float(hh),
+                "ll": float(ll),
+                "signal": signal,
+                "qty": qty,
+                "stop": stop,
+                "action": action,
+                "buy_status": order_status,
+                "stop_status": stop_status
+            })
+            did_log = True
+        except Exception as log_exc:
+            logger.error(f"{SYMBOL}: Erreur lors du log: {log_exc}")
 
         # --- Send Telegram notification ---
         from infra.notifier import notify, fmt_event
