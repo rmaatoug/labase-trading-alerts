@@ -76,6 +76,7 @@ def append_log(row: dict):
 def process_ticker(SYMBOL):
     try:
         FORCE_TRADE = False  # Initialize local variable
+        signal = False       # Always defined to avoid UnboundLocalError
         
         # Alpaca only supports US stocks
         currency = "USD"
