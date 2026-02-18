@@ -1,6 +1,30 @@
 # Contexte de conversation — labase-trading-alerts
 
-**Dernière mise à jour :** 14 février 2026 soir - Migration complète vers Alpaca ✅
+
+**Dernière mise à jour :** 17 février 2026 matin - Diagnostic accès données Alpaca & alertes Telegram
+## 📝 NOTE SESSION 17 FÉV 2026
+
+- 📉 **Aucun trade le lundi 16/02/2026** :
+  - Cause : Erreur "subscription does not permit querying recent SIP data" pour tous les tickers.
+  - Explication : L'abonnement Alpaca Paper Trading ne donne accès qu'aux données IEX (limitées). Les données SIP (temps réel, tous marchés US) nécessitent un abonnement payant "US Market Data", même en paper trading.
+  - Conséquence : Le bot ne peut pas trader sans données SIP récentes.
+  - Solution : Activer l'option "US Market Data" dans le dashboard Alpaca pour débloquer l'accès SIP.
+
+- ⚠️ **Variables d'environnement vides dans le shell** :
+  - $ALPACA_API_KEY et $ALPACA_SECRET_KEY étaient vides dans le shell interactif, mais le bot lit bien le .env lors de l'exécution (pas d'erreur critique si lancé via script/cron qui charge le .env).
+
+- 🚨 **Alertes Telegram en cas d'erreur critique** :
+  - Le code envoie une alerte via notify() si la connexion Alpaca échoue.
+  - Si les variables Telegram ne sont pas définies, notify() retourne False silencieusement (pas d'alerte ni de log supplémentaire).
+  - Amélioration recommandée : logger explicitement l'échec d'envoi Telegram pour faciliter le debug.
+
+
+**À rappeler lors de la prochaine session si redémarrage :**
+- Vérifier que l'abonnement SIP est actif si tu veux des trades en temps réel.
+- Vérifier que les variables Telegram sont bien chargées dans l'environnement du bot pour recevoir les alertes critiques.
+- Utiliser uniquement la librairie `alpaca-py` (et non `alpaca-trade-api`).
+- Si une dépendance manque, vérifier requirements.txt et l'environnement virtuel.
+- Si une dépendance Alpaca manque, installer `alpaca-py` et désinstaller `alpaca-trade-api`.
 
 > **⚠️ NOTE POUR L'IA** : À la fin de chaque session significative, demander à l'utilisateur si ce fichier doit être mis à jour avec les décisions/changements importants.
 > **🚨 SÉCURITÉ** : Ne JAMAIS enregistrer d'identifiants, mots de passe ou tokens dans ce fichier.

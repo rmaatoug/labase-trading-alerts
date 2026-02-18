@@ -1,27 +1,23 @@
 # --- AUTO-ADDED: logging + metrics ---
+
+from dotenv import load_dotenv
+load_dotenv()
+import os
+import time
+from datetime import datetime, timedelta
 from infra.logger import setup_logger
-from infra.metrics import load_metrics, inc
+from infra.metrics import load_metrics
+from src.telegram_client import send_telegram
 
 logger = setup_logger("logs/bot.log")
 metrics = load_metrics()
 logger.info("RUNNER START")
-# --- END AUTO-ADDED ---
-
-import subprocess
-import sys
-import time
-import os
-from datetime import datetime, timedelta, date
-from dotenv import load_dotenv
-from src.telegram_client import send_telegram
-
-load_dotenv()
 
 SCRIPT = "trade_breakout_paper.py"
 DAILY_REPORT_SCRIPT = "daily_report.py"
-DAILY_REPORT_HOUR = 22  # Heure d'envoi du rapport (22h)
+DAILY_REPORT_HOUR = 22
 HEARTBEAT_FILE = "logs/last_heartbeat.txt"
-last_report_date = None  # Tracker pour éviter les doublons
+last_report_date = None
 
 def write_heartbeat():
     """Écrit le timestamp actuel pour le watchdog"""

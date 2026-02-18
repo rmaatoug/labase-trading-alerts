@@ -11,6 +11,10 @@ from infra.summary import (
     calculate_max_drawdown
 )
 
+# Chargement automatique des variables d'environnement
+from dotenv import load_dotenv
+load_dotenv()
+
 
 def print_performance_report(days: int = None):
     """Affiche un rapport de performance détaillé"""

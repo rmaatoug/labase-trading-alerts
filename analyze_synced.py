@@ -7,14 +7,16 @@ Usage sur Codespaces après avoir copié les fichiers du MacBook:
 """
 
 import argparse
-import os
 from pathlib import Path
 from infra.summary import (
-    load_performance_history,
     calculate_sharpe_ratio,
     calculate_max_drawdown
 )
 import csv
+
+# Chargement automatique des variables d'environnement
+from dotenv import load_dotenv
+load_dotenv()
 
 
 def find_latest_backup():

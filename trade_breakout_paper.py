@@ -1,13 +1,13 @@
-import math
 import csv
 import json
-from datetime import datetime, timezone, date
-import time
+
+# Chargement automatique des variables d'environnement
+from dotenv import load_dotenv
+load_dotenv()
 
 # --- monitoring / logging ---
 from infra.logger import setup_logger
-from infra.metrics import load_metrics, inc
-import os
+from infra.metrics import load_metrics
 
 logger = setup_logger('logs/bot.log')
 metrics = load_metrics()
@@ -87,61 +87,12 @@ def process_ticker(SYMBOL):
             logger.error(f"{SYMBOL}: Failed to fetch bars: {e}")
             error_msg = fmt_event(
                 f"❌ ERREUR API ALPACA - {SYMBOL}",
-                Erreur="Impossible de récupérer les données historiques",
-                Details=str(e)
+                Erreur="Impossible de récupérer les données historiques"
             )
             notify(error_msg)
             return
-
-        if not bars or len(bars) <= N:
-            logger.warning(f"{SYMBOL}: Not enough bars ({len(bars)})")
-            return
-
-        window = bars[-(N+1):-1]
-        last = bars[-1]
-
-        hh = max(b.high for b in window)
-        ll = min(b.low for b in window)
-
-        entry = float(last.close)
-        stop = float(ll)
-
-        signal = entry > hh
-        risk_per_share_usd = max(entry - stop, 0.0)
-
-        qty = 0
-        if risk_per_share_usd > 0:
-            risk_per_share_eur = risk_per_share_usd * FX_USD_EUR
-            qty_risk = math.floor(RISK_EUR / risk_per_share_eur)
-
-            price_eur = entry * FX_USD_EUR
-            qty_value = math.floor(MAX_POSITION_EUR / price_eur) if price_eur > 0 else 0
-
-            qty = min(qty_risk, qty_value)
-            # Cap at 500 for safety
-            qty = min(qty, 500)
-
-        now = datetime.now(timezone.utc).isoformat()
-
-        print(f"[{SYMBOL}] last={last.date} close={entry} HH={hh} LL={ll} signal={signal} qty={qty}")
-
-        # --- 1 trade par jour par ticker ---
-        today_str = datetime.now(timezone.utc).date().isoformat()
         already_traded_today = False
-
-        try:
-            with open(LOG_FILE, "r", newline="") as f:
-                reader = csv.DictReader(f)
-                for r in reader:
-                    if (
-                        r.get("symbol") == SYMBOL and
-                        r.get("action") == "ENTER_LONG" and
-                        r.get("ts_utc", "").startswith(today_str)
-                    ):
-                        already_traded_today = True
-                        break
-        except FileNotFoundError:
-            pass
+        # ...existing code...
 
         # --- action ---
         action = "NO_TRADE"

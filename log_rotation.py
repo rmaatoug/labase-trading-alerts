@@ -5,11 +5,14 @@ Rotation des logs - Évite que bot.log ne remplisse le disque
 0 0 * * * cd ~/labase-trading-alerts && python3 log_rotation.py
 """
 
-import os
 import gzip
 import shutil
 from datetime import datetime
 from pathlib import Path
+
+# Chargement automatique des variables d'environnement
+from dotenv import load_dotenv
+load_dotenv()
 
 LOG_FILE = "logs/bot.log"
 MAX_LOG_SIZE_MB = 50  # Rotation si > 50 MB

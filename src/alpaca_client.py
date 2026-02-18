@@ -9,10 +9,8 @@ from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest, StopOrderRequest
-from alpaca.trading.enums import OrderSide, TimeInForce, OrderType
-from alpaca.trading.models import Order
+from alpaca.trading.enums import OrderSide, TimeInForce
 from datetime import datetime, timedelta
-import pandas as pd
 
 
 class AlpacaClient:
@@ -46,38 +44,48 @@ class AlpacaClient:
         Get historical bars for a symbol.
         Returns list of bar objects with: date, open, high, low, close, volume
         """
-        try:
-            end = datetime.now()
-            start = end - timedelta(days=days)
-            tf_map = {'5Min': TimeFrame.Minute, '1Hour': TimeFrame.Hour, '1Min': TimeFrame.Minute}
-            tf = tf_map.get(timeframe, TimeFrame.Minute)
-            request_params = StockBarsRequest(
-                symbol_or_symbols=symbol,
-                timeframe=tf,
-                start=start,
-                end=end
-            )
-            bars = self.data_client.get_stock_bars(request_params)
-            if symbol in bars:
-                bars = bars[symbol]
-            else:
+        end = datetime.now()
+        start = end - timedelta(days=days)
+        tf_map = {'5Min': TimeFrame.Minute, '1Hour': TimeFrame.Hour, '1Min': TimeFrame.Minute}
+        tf = tf_map.get(timeframe, TimeFrame.Minute)
+        feed = os.getenv('ALPACA_FEED', 'iex')
+        # Fallback logic: try SIP, fallback to IEX if 403
+        tried_sip = False
+        for try_feed in ([feed] if feed != 'sip' else ['sip', 'iex']):
+            try:
+                request_params = StockBarsRequest(
+                    symbol_or_symbols=symbol,
+                    timeframe=tf,
+                    start=start,
+                    end=end,
+                    feed=try_feed
+                )
+                bars = self.data_client.get_stock_bars(request_params)
+                if symbol in bars:
+                    bars = bars[symbol]
+                else:
+                    return []
+                result = []
+                for bar in bars:
+                    class Bar:
+                        pass
+                    b = Bar()
+                    b.date = bar.timestamp
+                    b.open = float(bar.open)
+                    b.high = float(bar.high)
+                    b.low = float(bar.low)
+                    b.close = float(bar.close)
+                    b.volume = int(bar.volume)
+                    result.append(b)
+                return result
+            except Exception as e:
+                # Fallback if SIP fails with 403
+                if try_feed == 'sip' and '403' in str(e):
+                    print(f"SIP feed not permitted, falling back to IEX for {symbol}")
+                    tried_sip = True
+                    continue
+                print(f"Error fetching bars for {symbol} (feed={try_feed}): {e}")
                 return []
-            result = []
-            for bar in bars:
-                class Bar:
-                    pass
-                b = Bar()
-                b.date = bar.timestamp
-                b.open = float(bar.open)
-                b.high = float(bar.high)
-                b.low = float(bar.low)
-                b.close = float(bar.close)
-                b.volume = int(bar.volume)
-                result.append(b)
-            return result
-        except Exception as e:
-            print(f"Error fetching bars for {symbol}: {e}")
-            return []
     
     def get_positions(self):
         """Get current positions."""

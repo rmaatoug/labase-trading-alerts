@@ -5,14 +5,12 @@ Heartbeat matinal - Notification quotidienne de bon fonctionnement
 0 9 * * * cd ~/labase-trading-alerts && python3 heartbeat_morning.py
 """
 
+
 import os
 import subprocess
-from datetime import datetime
-from pathlib import Path
 from dotenv import load_dotenv
-from src.telegram_client import send_telegram
-
 load_dotenv()
+from src.telegram_client import send_telegram
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')

@@ -10,9 +10,12 @@ Options:
 
 import argparse
 import shutil
-import os
 from datetime import datetime
 from pathlib import Path
+
+# Chargement automatique des variables d'environnement
+from dotenv import load_dotenv
+load_dotenv()
 
 
 SOURCE_FILES = [

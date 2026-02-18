@@ -5,21 +5,17 @@ Watchdog - Surveillance et redémarrage automatique du bot
 0 * * * * cd ~/labase-trading-alerts && python3 watchdog.py
 """
 
-import subprocess
-import os
-import sys
-from datetime import datetime
-from pathlib import Path
-from dotenv import load_dotenv
-from src.telegram_client import send_telegram
 
+import os
+from dotenv import load_dotenv
 load_dotenv()
+from src.telegram_client import send_telegram
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 RUNNER_SCRIPT = "runner_5m.py"
 LAST_HEARTBEAT_FILE = "logs/last_heartbeat.txt"
-MAX_HOURS_WITHOUT_HEARTBEAT = 2  # Alerte si pas de heartbeat depuis 2h
+MAX_HOURS_WITHOUT_HEARTBEAT = 2
 
 
 def is_bot_running():

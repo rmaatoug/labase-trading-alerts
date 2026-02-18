@@ -5,11 +5,13 @@ Lance ce script en fin de journée (ex: 22h via cron)
 Sauvegarde aussi les performances dans performance_log.csv
 """
 
-from src.alpaca_client import connect_alpaca
+
 import csv
 import os
-from datetime import datetime, timezone, date
+from datetime import date
 from dotenv import load_dotenv
+load_dotenv()
+from src.alpaca_client import connect_alpaca
 from src.telegram_client import send_telegram
 from infra.logger import setup_logger
 from infra.summary import (
@@ -21,10 +23,7 @@ from infra.summary import (
     calculate_max_drawdown
 )
 
-load_dotenv()
 logger = setup_logger("logs/bot.log")
-
-# Configuration
 LOG_FILE = "trades_log.csv"
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
