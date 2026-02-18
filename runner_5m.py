@@ -1,5 +1,6 @@
 # --- AUTO-ADDED: logging + metrics ---
 
+
 from dotenv import load_dotenv
 load_dotenv()
 import os
@@ -9,6 +10,7 @@ from infra.logger import setup_logger
 from infra.metrics import load_metrics
 from src.telegram_client import send_telegram
 import subprocess
+import sys
 
 logger = setup_logger("logs/bot.log")
 metrics = load_metrics()

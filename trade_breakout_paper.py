@@ -95,7 +95,28 @@ def process_ticker(SYMBOL):
             notify(error_msg)
             return
         already_traded_today = False
-        # ...existing code...
+
+        # --- breakout logic (corrigé) ---
+        import math
+        N = 12
+        FX_USD_EUR = 0.92
+        RISK_EUR = 200.0
+        if len(bars) < N + 1:
+            logger.error(f"{SYMBOL}: Pas assez de données: {len(bars)} bars")
+            return
+        window = bars[-(N+1):-1]
+        last = bars[-1]
+        hh = max(b.high for b in window)
+        ll = min(b.low for b in window)
+        entry = last.close
+        stop = ll
+        signal = entry > hh
+        risk_per_share_usd = max(entry - stop, 0)
+        if risk_per_share_usd == 0:
+            qty = 0
+        else:
+            risk_per_share_eur = risk_per_share_usd * FX_USD_EUR
+            qty = math.floor(RISK_EUR / risk_per_share_eur)
 
         # --- action ---
         action = "NO_TRADE"
@@ -266,6 +287,7 @@ def process_ticker(SYMBOL):
 
     except Exception as e:
         logger.error(f"Error processing {SYMBOL}: {e}", exc_info=True)
+        from infra.metrics import inc
         inc('api_errors')
         # Send Telegram alert for unexpected errors
         try:
