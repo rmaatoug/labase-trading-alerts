@@ -74,11 +74,11 @@ def append_log(row: dict):
 
 # --- Trading logic for a single symbol ---
 def process_ticker(SYMBOL):
+    from datetime import datetime
+    now = datetime.utcnow().isoformat()
     try:
         FORCE_TRADE = False  # Initialize local variable
         signal = False       # Always defined to avoid UnboundLocalError
-        from datetime import datetime
-        now = datetime.utcnow().isoformat()
         
         # Alpaca only supports US stocks
         currency = "USD"
