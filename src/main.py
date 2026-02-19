@@ -1,5 +1,10 @@
 import os
+import sys
 from dotenv import load_dotenv
+
+# Ajoute la racine du projet au PYTHONPATH si besoin
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from src.telegram_client import send_telegram
 from src.alpaca_client import connect_alpaca
 

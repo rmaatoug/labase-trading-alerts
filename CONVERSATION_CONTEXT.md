@@ -1,3 +1,30 @@
+# 🟢 SYNTHÈSE ÉTAT DU PROJET (19 fév 2026)
+- Code, scripts et notifications Telegram synchronisés avec le marché US (heartbeat à l’ouverture, rapport à la clôture, alertes événementielles).
+- Limitation actuelle : pas de données historiques ni de trades réels sans abonnement SIP (Algo Trader Plus). Le bot fonctionne, mais ne peut pas trader sans accès aux données SIP.
+- Prochaine étape : tester la prise de position réelle à l’ouverture du marché US (15h30 FR) pour valider l’exécution sur Alpaca Paper.
+- Dès que l’abonnement SIP sera actif, refaire un test complet sur plusieurs tickers.
+- Surveillance des logs et de Telegram recommandée pendant les horaires US pour valider le workflow complet.
+# 🟢 NOTE IA — SYNCHRONISATION MARCHÉ US (février 2026)
+- Tous les messages Telegram sont désormais alignés sur les horaires du marché US :
+  - Heartbeat quotidien envoyé à 15h30 FR (9h30 NY, ouverture US) uniquement si le marché est ouvert (jours ouvrés, horaires US).
+  - Rapport quotidien à 22h FR (fin de séance US).
+  - Les autres notifications (trade, erreur, crash, stop, etc.) sont envoyées uniquement lors d’événements, donc déjà synchronisées avec l’activité réelle du bot.
+# 🟢 NOTE IA — À FAIRE PROCHAINEMENT (février 2026)
+- Dès que l'utilisateur le demande, programmer un test de prise de position réelle (ordre d'achat) pendant les heures d'ouverture du marché US (15h30-22h00 heure française) pour prouver l'exécution effective sur Alpaca Paper.
+- Adapter la logique des notifications Telegram pour qu'elles ne soient envoyées que pendant les heures du marché US (pas de heartbeat à 9h, mais plutôt à l'ouverture ou juste avant 15h30 FR/9h30 NY).
+
+# 🟢 NOTE IA — CONTEXTE & TESTS GLOBAUX (février 2026)
+À chaque session, l’IA doit :
+- Lire ce fichier en premier pour comprendre l’état du projet, les décisions, bugs récents et conventions (GitHub, Codespaces, serveur, déploiement).
+- Vérifier systématiquement :
+  - L’exécution des scripts principaux (src/main.py, trade_breakout_paper.py, etc.)
+  - Le fonctionnement des scripts de démarrage/arrêt (scripts/start.sh, scripts/stop.sh)
+  - Le suivi des logs (tail -f logs/bot.log)
+  - Le comportement sous cron (runner_5m.py, watchdog, rotation logs)
+  - Les workflows GitHub (commit, pull, push, déploiement)
+  - Les différences d’environnement (Codespaces vs serveur)
+Cela garantit que le workflow complet (cron, scripts, logs, alertes, CI/CD) est validé dans Codespaces avant tout déploiement serveur ou commit GitHub.
+
 # Contexte de conversation — labase-trading-alerts
 
 
@@ -26,7 +53,9 @@
 - Si une dépendance manque, vérifier requirements.txt et l'environnement virtuel.
 - Si une dépendance Alpaca manque, installer `alpaca-py` et désinstaller `alpaca-trade-api`.
 
-> **⚠️ NOTE POUR L'IA** : À la fin de chaque session significative, demander à l'utilisateur si ce fichier doit être mis à jour avec les décisions/changements importants.
+> **⚠️ NOTE POUR L'IA** :
+> - À la fin de chaque session significative, demander à l'utilisateur si ce fichier doit être mis à jour avec les décisions/changements importants.
+> - **À CHAQUE OUVERTURE DE SESSION, LIRE CE FICHIER EN PREMIER pour connaître l'état du projet, les décisions, les bugs récents et les conventions à respecter.**
 > **🚨 SÉCURITÉ** : Ne JAMAIS enregistrer d'identifiants, mots de passe ou tokens dans ce fichier.
 
 ---

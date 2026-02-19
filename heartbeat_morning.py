@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
 Heartbeat matinal - Notification quotidienne de bon fonctionnement
-À lancer via cron tous les jours à 9h:
-0 9 * * * cd ~/labase-trading-alerts && python3 heartbeat_morning.py
+À lancer via cron tous les jours à 15h30 (heure FR, 9h30 NY) :
+30 15 * * 1-5 cd ~/labase-trading-alerts && python3 heartbeat_morning.py
+import pytz
+from datetime import datetime, time
 """
 
 
@@ -59,6 +61,15 @@ def count_today_logs():
 
 
 def main():
+    # Vérifie si on est bien pendant l'ouverture du marché US (9h30-16h NY, jours ouvrés)
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(ny_tz)
+    is_weekday = now_ny.weekday() < 5
+    market_open = time(9, 30)
+    market_close = time(16, 0)
+    if not (is_weekday and market_open <= now_ny.time() <= market_close):
+        print("Marché US fermé, pas d'envoi Telegram.")
+        return
     print(f"🌅 Heartbeat matinal - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     bot_running = is_bot_running()
