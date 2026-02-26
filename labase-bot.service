@@ -10,11 +10,7 @@ ExecStart=/usr/bin/python3 /root/labase-trading-alerts/trade_breakout_paper.py
 Restart=always
 RestartSec=10
 
-# Sécurité renforcée (désactivée pour compatibilité root/chemin custom)
-#ProtectHome=yes
-#ProtectSystem=full
-#NoNewPrivileges=yes
-#PrivateTmp=yes
+# (Sécurité systemd désactivée pour compatibilité maximale)
 
 # Limite les accès
 ReadWritePaths=/workspaces/labase-trading-alerts/logs /workspaces/labase-trading-alerts
