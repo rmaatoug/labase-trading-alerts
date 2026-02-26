@@ -1,0 +1,17 @@
+[Unit]
+Description=Trading Bot Runner (labase-trading-alerts)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/workspaces/labase-trading-alerts
+ExecStart=/workspaces/labase-trading-alerts/.venv/bin/python3 runner_5m.py
+Restart=always
+RestartSec=10
+User=ubuntu
+EnvironmentFile=/workspaces/labase-trading-alerts/.env
+StandardOutput=append:/workspaces/labase-trading-alerts/logs/bot.log
+StandardError=append:/workspaces/labase-trading-alerts/logs/bot.log
+
+[Install]
+WantedBy=multi-user.target

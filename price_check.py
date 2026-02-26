@@ -7,7 +7,10 @@ alpaca.disconnect()
 
 from dotenv import load_dotenv
 load_dotenv()
-from src.alpaca_client import connect_alpaca
+try:
+    from src.alpaca_client import connect_alpaca
+except ImportError:
+    from alpaca_client import connect_alpaca
 
 alpaca = connect_alpaca()
 bars = alpaca.get_historical_bars('AAPL', days=1, timeframe='1Min')

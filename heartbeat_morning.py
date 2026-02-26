@@ -12,7 +12,10 @@ import os
 import subprocess
 from dotenv import load_dotenv
 load_dotenv()
-from src.telegram_client import send_telegram
+try:
+    from src.telegram_client import send_telegram
+except ImportError:
+    from telegram_client import send_telegram
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')

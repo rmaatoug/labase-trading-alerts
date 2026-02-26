@@ -7,7 +7,10 @@ alpaca.disconnect()
 
 from dotenv import load_dotenv
 load_dotenv()
-from src.alpaca_client import connect_alpaca
+try:
+    from src.alpaca_client import connect_alpaca
+except ImportError:
+    from alpaca_client import connect_alpaca
 
 alpaca = connect_alpaca()
 account = alpaca.get_account()

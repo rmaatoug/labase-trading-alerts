@@ -9,7 +9,10 @@ signal = entry > hh
 
 from dotenv import load_dotenv
 load_dotenv()
-from src.alpaca_client import connect_alpaca
+try:
+    from src.alpaca_client import connect_alpaca
+except ImportError:
+    from alpaca_client import connect_alpaca
 import math
 
 SYMBOL = "AAPL"

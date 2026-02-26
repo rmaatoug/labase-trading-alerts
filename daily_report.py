@@ -11,8 +11,14 @@ import os
 from datetime import date
 from dotenv import load_dotenv
 load_dotenv()
-from src.alpaca_client import connect_alpaca
-from src.telegram_client import send_telegram
+try:
+    from src.alpaca_client import connect_alpaca
+except ImportError:
+    from alpaca_client import connect_alpaca
+try:
+    from src.telegram_client import send_telegram
+except ImportError:
+    from telegram_client import send_telegram
 from infra.logger import setup_logger
 from infra.summary import (
     calculate_win_rate,

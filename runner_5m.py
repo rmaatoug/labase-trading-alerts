@@ -8,7 +8,10 @@ import time
 from datetime import datetime, timedelta
 from infra.logger import setup_logger
 from infra.metrics import load_metrics
-from src.telegram_client import send_telegram
+try:
+    from src.telegram_client import send_telegram
+except ImportError:
+    from telegram_client import send_telegram
 import subprocess
 import sys
 

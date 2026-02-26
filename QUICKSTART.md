@@ -69,9 +69,19 @@ Remplir :
 TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
 TELEGRAM_CHAT_ID=987654321
 
-ALPACA_API_KEY=PKXXXXXXXXXXXXXXXXXXX
+
+# Pour le mode LIVE (trading réel) :
+ALPACA_API_KEY=AKXXXXXXXXXXXXXXXXXXX
 ALPACA_SECRET_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-ALPACA_BASE_URL=https://paper-api.alpaca.markets/v2
+ALPACA_BASE_URL=https://api.alpaca.markets
+
+# Pour le mode PAPER (simulation) :
+# ALPACA_API_KEY=PKXXXXXXXXXXXXXXXXXXX
+# ALPACA_SECRET_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+# ALPACA_BASE_URL=https://paper-api.alpaca.markets
+
+# Feed US Market Data (SIP) recommandé en live :
+ALPACA_FEED=sip
 ```
 
 Sauvegarder : `Ctrl+O`, `Enter`, `Ctrl+X`
