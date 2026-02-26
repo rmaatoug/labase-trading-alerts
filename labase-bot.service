@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=ubuntu
+User=root
 WorkingDirectory=/workspaces/labase-trading-alerts
 ExecStart=/usr/bin/python3 /workspaces/labase-trading-alerts/trade_breakout_paper.py
 Restart=always
