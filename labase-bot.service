@@ -5,14 +5,11 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/workspaces/labase-trading-alerts
+WorkingDirectory=/root/labase-trading-alerts
 ExecStart=/usr/bin/python3 /root/labase-trading-alerts/trade_breakout_paper.py
 Restart=always
 RestartSec=10
 
-# (Sécurité systemd désactivée pour compatibilité maximale)
-
-# (Aucune restriction d'accès systemd)
 
 [Install]
 WantedBy=multi-user.target
