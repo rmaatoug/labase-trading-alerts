@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+User=labase
 WorkingDirectory=/root/labase-trading-alerts
-ExecStart=/root/labase-trading-alerts/venv/bin/python /root/labase-trading-alerts/trade_breakout_paper.py
+ExecStart=/root/labase-trading-alerts/venv/bin/python /root/labase-trading-alerts/runner_5m.py
 Restart=always
 RestartSec=10
 
