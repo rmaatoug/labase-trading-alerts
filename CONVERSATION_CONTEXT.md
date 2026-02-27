@@ -1,12 +1,20 @@
 # 🟢 SYNTHÈSE ÉTAT DU PROJET (19 fév 2026)
-- Code, scripts et notifications Telegram synchronisés avec le marché US (heartbeat à l’ouverture, rapport à la clôture, alertes événementielles).
-- Limitation actuelle : pas de données historiques ni de trades réels sans abonnement SIP (Algo Trader Plus). Le bot fonctionne, mais ne peut pas trader sans accès aux données SIP.
-- Prochaine étape : tester la prise de position réelle à l’ouverture du marché US (15h30 FR) pour valider l’exécution sur Alpaca Paper.
-- Dès que l’abonnement SIP sera actif, refaire un test complet sur plusieurs tickers.
-- Surveillance des logs et de Telegram recommandée pendant les horaires US pour valider le workflow complet.
+# ⚡️ NOTE UTILISATEUR (27 fév 2026)
+- Compte Alpaca créé, configuration API et Telegram OK.
+- Mode live trading activé (pas encore de dépôt d'argent, mais prêt à trader en réel).
 # 🟢 NOTE IA — SYNCHRONISATION MARCHÉ US (février 2026)
+
+# ⚡️ ASTUCE — PRIX ACTION US EN TEMPS RÉEL SANS PYTHON (février 2026)
+Pour obtenir le prix en temps réel d'une action US (ex : TSLA) sans utiliser Python, utiliser la commande suivante sur le serveur (les clés API doivent être dans .env) :
+
+```bash
+set -a; source /opt/labase-trading-alerts/.env; set +a
+curl -s -X GET "https://data.alpaca.markets/v2/stocks/quotes/latest?symbols=TSLA" \
+  -H "APCA-API-KEY-ID: $ALPACA_API_KEY" \
+  -H "APCA-API-SECRET-KEY: $ALPACA_SECRET_KEY" | grep -o '"ap":[0-9.]*' | head -1 | cut -d: -f2
+```
+Remplacer TSLA par le ticker souhaité. Cette commande retourne le prix ask en temps réel via l'US Market Data d'Alpaca.
 - Tous les messages Telegram sont désormais alignés sur les horaires du marché US :
-  - Heartbeat quotidien envoyé à 15h30 FR (9h30 NY, ouverture US) uniquement si le marché est ouvert (jours ouvrés, horaires US).
   - Rapport quotidien à 22h FR (fin de séance US).
   - Les autres notifications (trade, erreur, crash, stop, etc.) sont envoyées uniquement lors d’événements, donc déjà synchronisées avec l’activité réelle du bot.
 # 🟢 NOTE IA — À FAIRE PROCHAINEMENT (février 2026)
